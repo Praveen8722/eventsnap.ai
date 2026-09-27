@@ -1,0 +1,76 @@
+name: Website UI CD
+
+# Deploys eventsnap-website-ui to GitHub Pages:
+#   https://praveen8722.github.io/eventsnap.ai/
+# One-time setup: repo Settings → Pages → Build and deployment → Source: "GitHub Actions".
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'eventsnap-website-ui/**'
+      - '.github/workflows/website-ui-cd.yaml'
+  workflow_dispatch:
+
+# Only one deployment at a time; a newer push doesn't cancel one in progress.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    name: "Build (Vite) for GitHub Pages"
+    runs-on: ubuntu-latest
+
+    # This repo holds four projects; the website UI lives in its own folder.
+    defaults:
+      run:
+        working-directory: eventsnap-website-ui
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: eventsnap-website-ui/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      # Pages serves this repo under /eventsnap.ai/, so asset URLs need that base.
+      - name: Build
+        run: npm run build -- --base="${{ steps.pages.outputs.base_path }}/"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: eventsnap-website-ui/dist
+
+  deploy:
+    name: "Deploy to GitHub Pages"
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
