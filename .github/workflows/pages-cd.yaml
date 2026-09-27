@@ -1,0 +1,98 @@
+name: Pages CD
+
+# Deploys both front-ends to one GitHub Pages site (a repo has only one):
+#   Website UI    → https://praveen8722.github.io/eventsnap.ai/
+#   Dashboard UI  → https://praveen8722.github.io/eventsnap.ai/app/
+# One-time setup: repo Settings → Pages → Build and deployment → Source: "GitHub Actions".
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'eventsnap-website-ui/**'
+      - 'eventsnap-dashboard-ui/**'
+      - '.github/workflows/pages-cd.yaml'
+  workflow_dispatch:
+
+# Only one deployment at a time; a newer push doesn't cancel one in progress.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    name: "Build Website + Dashboard for GitHub Pages"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: |
+            eventsnap-website-ui/package-lock.json
+            eventsnap-dashboard-ui/package-lock.json
+
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      # ---- Website UI (Vite) → site root ----
+      - name: "Website: install"
+        working-directory: eventsnap-website-ui
+        run: npm ci
+
+      - name: "Website: typecheck"
+        working-directory: eventsnap-website-ui
+        run: npm run typecheck
+
+      # Pages serves this repo under /eventsnap.ai/, so asset URLs need that base.
+      - name: "Website: build"
+        working-directory: eventsnap-website-ui
+        run: npm run build -- --base="${{ steps.pages.outputs.base_path }}/" --outDir ../_site --emptyOutDir
+
+      # ---- Dashboard UI (Next.js static export) → /app/ ----
+      - name: "Dashboard: install"
+        working-directory: eventsnap-dashboard-ui
+        run: npm ci
+
+      - name: "Dashboard: build (static export)"
+        working-directory: eventsnap-dashboard-ui
+        env:
+          STATIC_EXPORT: 'true'
+          NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}/app
+        run: npm run build
+
+      # Pages uses only the site-root 404.html; the dashboard's forwards old
+      # /app/p/<slug> and /app/g/<slug> links to their ?slug= pages.
+      - name: Assemble site
+        run: |
+          cp -r eventsnap-dashboard-ui/out _site/app
+          cp eventsnap-dashboard-ui/out/404.html _site/404.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    name: "Deploy to GitHub Pages"
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

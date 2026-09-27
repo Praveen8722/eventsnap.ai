@@ -21,7 +21,7 @@ const Model = dynamic(() => import("@/components/ui/Model"));
 const shareUrlFor = (slug) => {
   if (!slug) return "";
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  return `${origin}/g/${slug}`;
+  return `${origin}${process.env.NEXT_PUBLIC_BASE_PATH || ""}/g/${slug}`;
 };
 
 export default function ClientGalleriesPage() {

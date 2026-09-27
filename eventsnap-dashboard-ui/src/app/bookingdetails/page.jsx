@@ -102,7 +102,7 @@ function BookingDetailsContent() {
   const gallery = bookingGalleries[0] || null;
   const galleryShareLink =
     gallery?.shareSlug && typeof window !== "undefined"
-      ? `${window.location.origin}/g/${gallery.shareSlug}`
+      ? `${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH || ""}/g/${gallery.shareSlug}`
       : "";
 
   const handleCopyShare = async () => {

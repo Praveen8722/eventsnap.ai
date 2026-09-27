@@ -22,7 +22,8 @@ const app = express();
 // ✅ CORS middleware
 app.use(
   cors({
-    origin: "http://localhost:3000", // allow your frontend
+    // Local dashboard UI, plus the GitHub Pages build (pages-cd.yaml).
+    origin: ["http://localhost:3000", "https://praveen8722.github.io"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
   })
