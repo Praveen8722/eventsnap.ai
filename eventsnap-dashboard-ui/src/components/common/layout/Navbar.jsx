@@ -79,7 +79,7 @@ const Navbar = () => {
         <div className="flex min-w-0 shrink items-center gap-2">
           <Link href="/dashboard" className="hidden min-w-0 shrink items-center gap-2 @min-[640px]:flex">
             <Image
-              src="/images/studio.png"
+              src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/images/studio.png`}
               alt=""
               width={400}
               height={400}
@@ -96,7 +96,7 @@ const Navbar = () => {
             className="flex min-w-0 shrink items-center gap-1 text-base font-bold @min-[380px]:text-lg @min-[640px]:hidden"
           >
             <Image
-              src="/images/eventsnaplogo.png"
+              src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/images/eventsnaplogo.png`}
               alt=""
               width={556}
               height={500}
@@ -158,7 +158,7 @@ const Navbar = () => {
                 {currentUser?.name || "Mallu Photographer"}
               </p>
               <Image
-                src="/images/photo_praveen.jpg"
+                src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/images/photo_praveen.jpg`}
                 alt=""
                 width={968}
                 height={992}

@@ -51,7 +51,7 @@ export default function Sidebar() {
         <h2 className="text-xl font-bold p-4 shadow-sm">
           <Link href="" onClick={() => setOpenSidebar(false)} className="flex items-center gap-2">
             <Image
-              src="/images/eventsnaplogo.png"
+              src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/images/eventsnaplogo.png`}
               alt=""
               width={556}
               height={500}
@@ -68,7 +68,7 @@ export default function Sidebar() {
         <ul className="space-y-2">
           <li>
             <Link
-              href="dashboard"
+              href="/dashboard"
               onClick={() => setOpenSidebar(false)}
               className={`flex items-center gap-3 p-4 hover:bg-[#6C63FF] hover:text-white rounded ${
                 isActive("dashboard") ? "bg-[#6C63FF] text-white" : ""
@@ -81,7 +81,7 @@ export default function Sidebar() {
 
           <li>
             <Link
-              href="bookings"
+              href="/bookings"
               onClick={() => {
                 setOpenBookings(!openBookings);
                 setOpenSidebar(false);
@@ -99,7 +99,7 @@ export default function Sidebar() {
 
           <li>
             <Link
-              href="scheduling"
+              href="/scheduling"
               onClick={() => {
                 setOpenScheduling(!openScheduling);
                 setOpenSidebar(false);
@@ -117,7 +117,7 @@ export default function Sidebar() {
 
           <li>
             <Link
-              href="payments"
+              href="/payments"
               onClick={() => {
                 setOpenPayments(!openPayments);
                 setOpenSidebar(false);
@@ -135,7 +135,7 @@ export default function Sidebar() {
 
           <li>
             <Link
-              href="client-galleries"
+              href="/client-galleries"
               onClick={() => {
                 setOpenGalleries(!openGalleries);
                 setOpenSidebar(false);
@@ -153,7 +153,7 @@ export default function Sidebar() {
 
           <li>
             <Link
-              href="invoices"
+              href="/invoices"
               onClick={() => setOpenSidebar(false)}
               className={`flex items-center gap-3 p-4 hover:bg-[#6C63FF] hover:text-white rounded ${
                 isActive("invoices") ? "bg-[#6C63FF] text-white" : ""
@@ -179,7 +179,7 @@ export default function Sidebar() {
 
           <li>
             <Link
-              href="my-profile"
+              href="/my-profile"
               onClick={() => {
                 setOpenProfile(!openProfile);
                 setOpenSidebar(false);
