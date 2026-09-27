@@ -56,3 +56,26 @@ npm run dev
 - `GET /api/contact` — list submitted contact messages
 - `POST /api/users/sync` — upsert a synced user profile (`eventSnapUserId` required; called by `eventsnap-dashboard-backend`)
 - `GET /api/users/sync/:eventSnapUserId` — look up a synced user profile
+
+## Docker
+
+Build (from this folder):
+
+```sh
+docker build -t eventsnap-website-backend .
+```
+
+Run:
+
+```sh
+docker run -d --name eventsnap-website-backend -p 8081:8081 \
+  -v "$(pwd)/.env:/app/.env:ro" \
+  -e MONGO_URL="mongodb://host.docker.internal:27017/<your-db>" \
+  eventsnap-website-backend
+```
+
+- `.env` is never copied into the image (see `.dockerignore`); it is mounted
+  read-only at runtime. Values passed with `-e` take priority over `.env`.
+- `MONGO_URL`: inside a container `localhost` is the container itself, so a
+  MongoDB running on your machine is reached via `host.docker.internal`.
+  A MongoDB Atlas URL works unchanged.

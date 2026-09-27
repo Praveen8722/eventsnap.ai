@@ -1,0 +1,12 @@
+# Never ship secrets or local machine state into the image.
+.env
+.env.*
+node_modules
+npm-debug.log*
+.git
+.gitignore
+
+# Not needed at runtime.
+Dockerfile
+.dockerignore
+README.md

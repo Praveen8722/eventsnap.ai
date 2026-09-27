@@ -1,0 +1,17 @@
+# Never ship secrets or local machine state into the image.
+.env
+.env.*
+node_modules
+npm-debug.log*
+.git
+.gitignore
+
+# Uploaded photos live in the /app/uploads volume, not the image.
+uploads
+
+# Not needed at runtime.
+Dockerfile
+.dockerignore
+Jenkinsfile
+README.md
+checkLiveUsers.js
