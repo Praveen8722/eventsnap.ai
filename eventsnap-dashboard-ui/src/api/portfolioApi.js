@@ -1,0 +1,32 @@
+import api from "@/lib/api";
+
+// Reuses the shared axios instance (JWT auto-attached). Absolute URLs override
+// its /api/auth baseURL.
+const API_ORIGIN = "http://localhost:8000";
+const BASE = `${API_ORIGIN}/api/portfolio`;
+
+// Logged-in photographer's portfolio (created on first access if missing).
+export const getMyPortfolio = () => api.get(`${BASE}/me`);
+
+export const updateMyPortfolio = (data) => api.put(`${BASE}/me`, data);
+
+// Public portfolio by its share slug — no auth required.
+export const getPublicPortfolio = (slug) =>
+  api.get(`${BASE}/public/${encodeURIComponent(slug)}`);
+
+// Upload one or more photos to the Portfolio → Gallery tab. Files are stored
+// on the server (same approach as Client Galleries) — the response carries
+// the full, updated portfolio.
+export const addPortfolioGalleryPhotos = (formData) =>
+  api.post(`${BASE}/me/gallery`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+
+// Delete one Portfolio → Gallery tab photo by its item id.
+export const deletePortfolioGalleryPhoto = (photoId) =>
+  api.delete(`${BASE}/me/gallery/${encodeURIComponent(photoId)}`);
+
+// Turn a stored portfolio photo path ("/uploads/portfolio/x.jpg") into an
+// absolute URL. A seeded Unsplash id or a full/data URL is left untouched.
+export const portfolioAssetUrl = (url) =>
+  url && url.startsWith("/uploads/") ? `${API_ORIGIN}${url}` : url;
