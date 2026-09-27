@@ -1,5 +1,6 @@
 import api from "@/lib/api";
-const API = "http://localhost:8000/api/invoices";
+import { API_ORIGIN } from "@/lib/apiOrigin";
+const API = `${API_ORIGIN}/api/invoices`;
 
 export const createInvoice = async (data) => {
     return await api.post(`${API}/create-invoice`, data);

@@ -1,8 +1,8 @@
 import api from "@/lib/api";
+import { API_ORIGIN } from "@/lib/apiOrigin";
 
 // Reuses the shared axios instance (JWT auto-attached). Absolute URLs override
 // its /api/auth baseURL.
-const API_ORIGIN = "http://localhost:8000";
 const BASE = `${API_ORIGIN}/api/portfolio`;
 
 // Logged-in photographer's portfolio (created on first access if missing).

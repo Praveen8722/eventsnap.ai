@@ -1,5 +1,6 @@
 import api from "@/lib/api";
-const API = "http://localhost:8000/api/events";
+import { API_ORIGIN } from "@/lib/apiOrigin";
+const API = `${API_ORIGIN}/api/events`;
 
 export const createEvent = async (data) => {
     return await api.post(`${API}/`, data);

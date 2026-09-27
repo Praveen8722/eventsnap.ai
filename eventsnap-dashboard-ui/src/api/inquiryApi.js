@@ -1,5 +1,6 @@
 import api from "@/lib/api";
-const API = "http://localhost:8000/api/inquiries";
+import { API_ORIGIN } from "@/lib/apiOrigin";
+const API = `${API_ORIGIN}/api/inquiries`;
 
 // Public — the Portfolio "Contact" / "Send Inquiry" form (no auth).
 export const submitInquiry = async (slug, data) => {

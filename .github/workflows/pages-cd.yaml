@@ -73,6 +73,9 @@ jobs:
         env:
           STATIC_EXPORT: 'true'
           NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}/app
+          # Dashboard backend on Render. Override with a repo variable
+          # (Settings → Secrets and variables → Actions → Variables).
+          NEXT_PUBLIC_API_URL: ${{ vars.DASHBOARD_API_URL || 'https://eventsnap-dashboard-backend-latest.onrender.com' }}
         run: npm run build
 
       # Pages uses only the site-root 404.html; the dashboard's forwards old

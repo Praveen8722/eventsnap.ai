@@ -1,6 +1,6 @@
 import api from "@/lib/api";
+import { API_ORIGIN } from "@/lib/apiOrigin";
 
-const API_ORIGIN = "http://localhost:8000";
 const API = `${API_ORIGIN}/api/bookings`;
 
 // Logged-in photographer's own Dashboard "+ New Booking" — real session, JWT

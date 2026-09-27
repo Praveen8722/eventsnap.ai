@@ -1,6 +1,7 @@
 import api from "@/lib/api";
+import { API_ORIGIN } from "@/lib/apiOrigin";
 
-export const API_ORIGIN = "http://localhost:8000";
+export { API_ORIGIN };
 const API = `${API_ORIGIN}/api/galleries`;
 
 // Turn a stored photo path ("/uploads/galleries/x.jpg") into an absolute URL.
