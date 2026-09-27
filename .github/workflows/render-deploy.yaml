@@ -69,14 +69,23 @@ jobs:
           HOOK_WEBSITE: ${{ secrets.RENDER_DEPLOY_HOOK_WEBSITE_BACKEND }}
         run: |
           if [ "$SERVICE" = dashboard-backend ]; then hook="$HOOK_DASHBOARD"; else hook="$HOOK_WEBSITE"; fi
+          # Pasted secrets often carry spaces, line breaks or quotes - strip them.
+          hook=$(printf '%s' "$hook" | tr -d '[:space:]"'"'")
           if [ -z "$hook" ]; then
             echo "::notice::No Render deploy hook secret for $SERVICE yet - skipping."
             exit 0
           fi
+          case "$hook" in
+            https://api.render.com/deploy/srv-*) ;;
+            *)
+              echo "::error::The Render deploy hook secret for $SERVICE doesn't look like https://api.render.com/deploy/srv-...?key=... - copy it again from Render → Settings → Deploy Hook."
+              exit 1 ;;
+          esac
           echo "Deploying $IMAGE to Render ($SERVICE)"
           encoded=$(jq -rn --arg v "$IMAGE" '$v|@uri')
-          # The hook already has ?key=...; imgURL selects the exact image.
-          code=$(curl -sS -o response.json -w '%{http_code}' -X POST "${hook}&imgURL=${encoded}")
+          # The hook normally has ?key=...; imgURL selects the exact image.
+          case "$hook" in *\?*) sep='&' ;; *) sep='?' ;; esac
+          code=$(curl -sS -o response.json -w '%{http_code}' -X POST "${hook}${sep}imgURL=${encoded}")
           echo "Render responded HTTP $code"
           if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
             echo "::error::Render deploy hook failed (HTTP $code)"
