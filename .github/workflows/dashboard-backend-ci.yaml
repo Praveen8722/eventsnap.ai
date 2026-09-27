@@ -1,0 +1,62 @@
+name: Dashboard Backend CI
+
+on:
+  push:
+    branches: [ main, 'feature/**' ]
+    paths:
+      - 'eventsnap-dashboard-backend/**'
+      - '.github/workflows/dashboard-backend-ci.yaml'
+  pull_request:
+    branches: [ main, 'feature/**' ]
+    paths:
+      - 'eventsnap-dashboard-backend/**'
+      - '.github/workflows/dashboard-backend-ci.yaml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: "Install & Load Check (Node)"
+    runs-on: ubuntu-latest
+
+    # This repo holds four projects; the dashboard backend lives in its own folder.
+    defaults:
+      run:
+        working-directory: eventsnap-dashboard-backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: eventsnap-dashboard-backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Syntax check
+        run: find . -name '*.js' -not -path './node_modules/*' -print0 | xargs -0 -n1 node --check
+
+      # Imports every route (and through them all controllers, models,
+      # middleware and services) without starting the server or connecting
+      # to MongoDB — catches missing packages and broken imports.
+      - name: Load all modules
+        run: |
+          node --input-type=module -e '
+            import { readdirSync } from "fs";
+            for (const f of readdirSync("src/routes")) {
+              await import("./src/routes/" + f);
+              console.log("loaded", f);
+            }
+            process.exit(0);
+          '

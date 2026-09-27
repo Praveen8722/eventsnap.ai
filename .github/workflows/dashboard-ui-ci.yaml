@@ -1,0 +1,51 @@
+name: Dashboard UI CI
+
+on:
+  push:
+    branches: [ main, 'feature/**' ]
+    paths:
+      - 'eventsnap-dashboard-ui/**'
+      - '.github/workflows/dashboard-ui-ci.yaml'
+  pull_request:
+    branches: [ main, 'feature/**' ]
+    paths:
+      - 'eventsnap-dashboard-ui/**'
+      - '.github/workflows/dashboard-ui-ci.yaml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: "Lint & Build (Next.js)"
+    runs-on: ubuntu-latest
+
+    # This repo holds four projects; the dashboard UI lives in its own folder.
+    defaults:
+      run:
+        working-directory: eventsnap-dashboard-ui
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: eventsnap-dashboard-ui/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npx eslint .
+
+      - name: Build
+        run: npm run build
