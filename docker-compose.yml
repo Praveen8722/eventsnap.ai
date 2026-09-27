@@ -1,0 +1,52 @@
+# Runs both EventSnap backend services in Docker on this machine, on the same
+# ports as `npm run dev`, so the dashboard UI (:3000 / GitHub Pages) and the
+# website UI (:5173 / GitHub Pages) work unchanged.
+#
+#   docker compose up -d --build     # build + start both
+#   docker compose logs -f           # follow logs
+#   docker compose down              # stop + remove containers
+#
+# Stop the `npm run dev` backends first (they use the same ports), or pick
+# other host ports: DASHBOARD_PORT=18000 WEBSITE_PORT=18081 docker compose up -d
+#
+# Each service reads its own .env (mounted read-only, never baked into the
+# image). Values under `environment:` take priority over .env and only adjust
+# what has to differ inside a container.
+
+name: eventsnap
+
+services:
+  website-backend:
+    build: ./eventsnap-website-backend
+    image: eventsnap-website-backend
+    ports:
+      - "${WEBSITE_PORT:-8081}:8081"
+    volumes:
+      - ./eventsnap-website-backend/.env:/app/.env:ro
+    environment:
+      # In a container "localhost" is the container itself; this reaches the
+      # MongoDB running on this machine.
+      MONGO_URL: mongodb://host.docker.internal:27017/eventSnapWebsiteDB
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  dashboard-backend:
+    build: ./eventsnap-dashboard-backend
+    image: eventsnap-dashboard-backend
+    ports:
+      - "${DASHBOARD_PORT:-8000}:8000"
+    volumes:
+      - ./eventsnap-dashboard-backend/.env:/app/.env:ro
+      # Same uploads folder `npm run dev` uses, so existing photos are served
+      # and new uploads land where they always have.
+      - ./eventsnap-dashboard-backend/uploads:/app/uploads
+    environment:
+      MONGO_URL: mongodb://host.docker.internal:27017/eventSnapDB
+      # Profile sync goes to the website backend container, not localhost.
+      COMPANY_WEBSITE_SYNC_URL: http://website-backend:8081/api/users/sync
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - website-backend
+    restart: unless-stopped
