@@ -1,0 +1,85 @@
+name: Render Deploy
+
+# Deploys the backend images published to GHCR (dashboard-backend-cd.yaml,
+# website-backend-cd.yaml) to Render.com, via each Render service's Deploy
+# Hook. Runs automatically after a backend CD run succeeds, deploying the
+# exact image it just pushed (tag sha-<commit>); or manually for :latest.
+#
+# One-time setup per backend, in Render:
+#   New → Web Service → "Existing Image":
+#     ghcr.io/praveen8722/eventsnap-dashboard-backend:latest   (or ...-website-backend)
+#   add its .env values under Environment, then copy
+#   Settings → Deploy Hook into a GitHub repo secret:
+#     RENDER_DEPLOY_HOOK_DASHBOARD_BACKEND
+#     RENDER_DEPLOY_HOOK_WEBSITE_BACKEND
+# A backend whose secret isn't set yet is skipped, not failed.
+
+on:
+  workflow_run:
+    workflows: [ "Dashboard Backend CD", "Website Backend CD" ]
+    types: [ completed ]
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Backend to deploy (image tag :latest)"
+        type: choice
+        options: [ dashboard-backend, website-backend ]
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: "Trigger Render deploy"
+    runs-on: ubuntu-latest
+    # Only after a successful image push on main (or a manual run).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
+    concurrency:
+      group: render-${{ github.event.workflow_run.name || inputs.service }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Pick service and image
+        id: target
+        env:
+          RUN_NAME: ${{ github.event.workflow_run.name }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          INPUT_SERVICE: ${{ inputs.service }}
+        run: |
+          case "${RUN_NAME:-}" in
+            "Dashboard Backend CD") service=dashboard-backend ;;
+            "Website Backend CD")   service=website-backend ;;
+            *)                      service="$INPUT_SERVICE" ;;
+          esac
+          # Same tag metadata-action pushed (type=sha,format=short → 7 chars).
+          if [ -n "${RUN_SHA:-}" ]; then tag="sha-${RUN_SHA:0:7}"; else tag=latest; fi
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "service=$service" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/$owner/eventsnap-$service:$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Call Render deploy hook
+        env:
+          SERVICE: ${{ steps.target.outputs.service }}
+          IMAGE: ${{ steps.target.outputs.image }}
+          HOOK_DASHBOARD: ${{ secrets.RENDER_DEPLOY_HOOK_DASHBOARD_BACKEND }}
+          HOOK_WEBSITE: ${{ secrets.RENDER_DEPLOY_HOOK_WEBSITE_BACKEND }}
+        run: |
+          if [ "$SERVICE" = dashboard-backend ]; then hook="$HOOK_DASHBOARD"; else hook="$HOOK_WEBSITE"; fi
+          if [ -z "$hook" ]; then
+            echo "::notice::No Render deploy hook secret for $SERVICE yet - skipping."
+            exit 0
+          fi
+          echo "Deploying $IMAGE to Render ($SERVICE)"
+          encoded=$(jq -rn --arg v "$IMAGE" '$v|@uri')
+          # The hook already has ?key=...; imgURL selects the exact image.
+          code=$(curl -sS -o response.json -w '%{http_code}' -X POST "${hook}&imgURL=${encoded}")
+          echo "Render responded HTTP $code"
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            echo "::error::Render deploy hook failed (HTTP $code)"
+            exit 1
+          fi
+          jq -r '"Render deploy id: \(.deploy.id // "n/a")"' response.json 2>/dev/null || true
