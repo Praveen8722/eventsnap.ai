@@ -58,6 +58,9 @@ jobs:
       # Pages serves this repo under /eventsnap.ai/, so asset URLs need that base.
       - name: "Website: build"
         working-directory: eventsnap-website-ui
+        env:
+          # Login / Sign Up hand off to the dashboard deployed below at /app.
+          VITE_DASHBOARD_URL: ${{ steps.pages.outputs.base_url }}/app
         run: npm run build -- --base="${{ steps.pages.outputs.base_path }}/" --outDir ../_site --emptyOutDir
 
       # ---- Dashboard UI (Next.js static export) → /app/ ----

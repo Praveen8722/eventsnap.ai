@@ -8,7 +8,9 @@ import type { Page } from "./types";
 // EventSnap signup page (eventsnap-dashboard-ui), which creates the account in
 // eventSnapDB exactly as it always has and takes the user straight to their
 // Pro Dashboard on success.
-const EVENTSNAP_APP_URL = "http://localhost:3000";
+// Hosted dashboard on GitHub Pages (VITE_DASHBOARD_URL), local dev server otherwise.
+const EVENTSNAP_APP_URL =
+  import.meta.env.VITE_DASHBOARD_URL || "http://localhost:3000";
 const EVENTSNAP_SIGNUP_URL = `${EVENTSNAP_APP_URL}/signup`;
 
 export function SignUpPage({ go }: { go: (p: Page) => void }) {
