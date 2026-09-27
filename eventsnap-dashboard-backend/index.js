@@ -19,11 +19,26 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 
+// Local dashboard UI, plus the GitHub Pages build (pages-cd.yaml).
+const ALLOWED_ORIGINS = ["http://localhost:3000", "https://praveen8722.github.io"];
+
+// Chrome/Edge "Private Network Access": when a public site (GitHub Pages)
+// calls this API on localhost, the preflight asks for permission with
+// Access-Control-Request-Private-Network — grant it for allowed origins only.
+app.use((req, res, next) => {
+  if (
+    req.headers["access-control-request-private-network"] === "true" &&
+    ALLOWED_ORIGINS.includes(req.headers.origin)
+  ) {
+    res.setHeader("Access-Control-Allow-Private-Network", "true");
+  }
+  next();
+});
+
 // ✅ CORS middleware
 app.use(
   cors({
-    // Local dashboard UI, plus the GitHub Pages build (pages-cd.yaml).
-    origin: ["http://localhost:3000", "https://praveen8722.github.io"],
+    origin: ALLOWED_ORIGINS,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
   })
