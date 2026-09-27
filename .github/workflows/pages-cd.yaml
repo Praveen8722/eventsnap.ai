@@ -61,6 +61,9 @@ jobs:
         env:
           # Login / Sign Up hand off to the dashboard deployed below at /app.
           VITE_DASHBOARD_URL: ${{ steps.pages.outputs.base_url }}/app
+          # Website backend on Render (Contact form). Override with the
+          # WEBSITE_API_URL repository variable.
+          VITE_WEBSITE_API_URL: ${{ vars.WEBSITE_API_URL || 'https://eventsnap-website-backend-latest.onrender.com' }}
         run: npm run build -- --base="${{ steps.pages.outputs.base_path }}/" --outDir ../_site --emptyOutDir
 
       # ---- Dashboard UI (Next.js static export) → /app/ ----

@@ -6,7 +6,10 @@ import { PURPLE, CORAL, DARK_GRADIENT } from "./theme";
 
 // EventSnap.ai company website's own backend (separate project, separate
 // database) — see eventsnap-website-backend/src/routes/contactRoutes.js.
-const CONTACT_API_URL = "http://localhost:8081/api/contact";
+// Hosted website backend (VITE_WEBSITE_API_URL, set by pages-cd.yaml), local one otherwise.
+const CONTACT_API_URL = `${
+  import.meta.env.VITE_WEBSITE_API_URL || "http://localhost:8081"
+}/api/contact`;
 
 export function ContactPage() {
   const [sent, setSent] = useState(false);

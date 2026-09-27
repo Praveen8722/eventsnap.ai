@@ -12,7 +12,8 @@ const app = express();
 // ✅ CORS middleware — the EventSnap.ai marketing site (Vite dev server)
 app.use(
   cors({
-    origin: "http://localhost:5173", // allow the company website frontend
+    // Company website: Vite dev server, plus the GitHub Pages build (pages-cd.yaml).
+    origin: ["http://localhost:5173", "https://praveen8722.github.io"],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
   })
