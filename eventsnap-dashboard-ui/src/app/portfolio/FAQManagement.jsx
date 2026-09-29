@@ -29,7 +29,7 @@ export function FAQManagement() {
       </div>
       <div className="space-y-3">
         {faqs.map((faq, idx) => (
-          <div key={faq.id} className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
+          <div key={faq.id} className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm cursor-pointer dashboard-card">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-medium text-gray-500">Question {idx + 1}</span>
               <button onClick={() => setFaqs(f => f.filter(x => x.id !== faq.id))} className="text-gray-300 hover:text-red-400 transition-colors">

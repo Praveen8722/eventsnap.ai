@@ -80,6 +80,9 @@ const portfolioSchema = new mongoose.Schema(
     experience: { type: String, default: "" },
     profilePhoto: { type: String, default: "" },
     coverImage: { type: String, default: "" },
+    // Portfolio navbar avatar — independent of the About profilePhoto.
+    // Empty means the navbar shows the owner's initials.
+    navbarPhoto: { type: String, default: "" },
 
     // Contact
     location: { type: String, default: "" },

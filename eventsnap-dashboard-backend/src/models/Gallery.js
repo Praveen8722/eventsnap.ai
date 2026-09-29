@@ -76,4 +76,28 @@ gallerySchema.index(
   { unique: true }
 );
 
-export default mongoose.model("Gallery", gallerySchema);
+const Gallery = mongoose.model("Gallery", gallerySchema);
+
+// Older databases still carry a global unique index on galleryId alone
+// ("galleryId_1") from before ids became per-photographer. Mongoose never
+// removes stale indexes, so it makes a second photographer's "GAL016" fail
+// with E11000 (e.g. when a booking is Confirmed and its gallery is
+// auto-created). Drop just that one index; the per-owner index above stays.
+const dropLegacyGalleryIdIndex = async () => {
+  try {
+    const indexes = await Gallery.collection.indexes();
+    if (indexes.some((ix) => ix.name === "galleryId_1")) {
+      await Gallery.collection.dropIndex("galleryId_1");
+      console.log("Dropped legacy galleries index galleryId_1");
+    }
+  } catch (err) {
+    // Collection not created yet — nothing to clean up.
+    if (err?.codeName !== "NamespaceNotFound") {
+      console.error("Could not drop legacy galleries index:", err.message);
+    }
+  }
+};
+if (mongoose.connection.readyState === 1) dropLegacyGalleryIdIndex();
+else mongoose.connection.once("open", dropLegacyGalleryIdIndex);
+
+export default Gallery;

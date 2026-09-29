@@ -25,8 +25,8 @@ export function QRCodePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Preview */}
-        <div className="bg-white rounded-xl border border-gray-100 p-8 shadow-sm flex flex-col items-center gap-5">
-          <div className="p-5 bg-white border-2 border-gray-100 rounded-2xl shadow-sm">
+        <div className="bg-white rounded-xl border border-gray-100 p-8 shadow-sm flex flex-col items-center gap-5 cursor-pointer dashboard-card">
+          <div className="p-5 bg-white border-2 border-gray-100 rounded-2xl shadow-sm cursor-pointer dashboard-card">
             <PortfolioQrCode url={url} size={qrSize} />
           </div>
           <div className="text-center">
@@ -37,7 +37,7 @@ export function QRCodePage() {
 
         {/* Options */}
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm space-y-4">
+          <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm space-y-4 cursor-pointer dashboard-card">
             <h3 className="font-semibold text-[#1E1E1E]">Download Options</h3>
 
             <div className="space-y-1.5">
@@ -70,7 +70,7 @@ export function QRCodePage() {
             </div>
           </div>
 
-          <div className="bg-[#EEF0FF] rounded-xl p-4 border border-[#6C63FF]/20">
+          <div className="bg-[#EEF0FF] rounded-xl p-4 border border-[#6C63FF]/20 cursor-pointer dashboard-card">
             <div className="text-sm font-semibold text-[#6C63FF] mb-1">Permanent QR Code</div>
             <p className="text-xs text-[#6C63FF]/70 leading-relaxed">Your QR code is permanent and always points to the same portfolio URL. Even if you update your name, photos, or services, the QR code continues to work perfectly.</p>
           </div>

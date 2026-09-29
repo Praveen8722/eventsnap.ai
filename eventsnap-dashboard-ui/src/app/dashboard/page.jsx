@@ -234,7 +234,7 @@ const Home = () => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Total Bookings
             <div className="w-12 h-12 bg-[#3A7BFF] rounded-xl flex items-center justify-center">
@@ -247,7 +247,7 @@ const Home = () => {
           </p>
         </Link>
 
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Upcoming Shoots
             <div className="w-12 h-12 rounded-xl bg-[#6A5CFF] flex items-center justify-center">
@@ -260,7 +260,7 @@ const Home = () => {
           </p>
         </Link>
 
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Pending Work
             <div className="w-12 h-12 rounded-xl bg-[#FF7A1A] flex items-center justify-center">
@@ -273,7 +273,7 @@ const Home = () => {
           </p>
         </Link>
 
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Completed Work
             <div className="w-12 h-12 rounded-xl bg-[#22C55E] flex items-center justify-center">
@@ -286,7 +286,7 @@ const Home = () => {
           </p>
         </Link>
 
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Payments Collected
             <div className="w-12 h-12 rounded-xl bg-[#22cb60] flex items-center justify-center">
@@ -299,7 +299,7 @@ const Home = () => {
           </p>
         </Link>
 
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Payments Pending
             <div className="w-12 h-12 rounded-xl bg-[#EF4444] flex items-center justify-center">
@@ -313,7 +313,7 @@ const Home = () => {
         </Link>
       </div>
 
-      <div className="p-6 bg-white rounded-xl shadow-sm border-2 border-gray-200 mt-6">
+      <div className="p-6 bg-white rounded-xl shadow-sm border-2 border-gray-200 mt-6 cursor-pointer dashboard-card">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <button
@@ -344,7 +344,7 @@ const Home = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6 ">
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border-2 border-gray-200">
+        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border-2 border-gray-200 cursor-pointer dashboard-card">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-800">Recent Bookings</h2>
             <Link
@@ -387,7 +387,7 @@ const Home = () => {
           </table>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border-2 border-gray-200">
+        <div className="bg-white p-6 rounded-xl shadow-sm border-2 border-gray-200 cursor-pointer dashboard-card">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Upcoming Shoots</h2>
           <div className="flex flex-col gap-4">
             {upcomingShootsList.length === 0 && (
@@ -431,7 +431,7 @@ const Home = () => {
 /* <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 mt-6">
         <Link
           href="#"
-          className="p-4 border-2 border-gray-200 rounded-xl bg-white w-full h-[20rem] flex flex-col justify-between"
+          className="p-4 border-2 border-gray-200 rounded-xl bg-white w-full h-[20rem] flex flex-col justify-between cursor-pointer dashboard-card"
         >
           <div>
             <div className="flex justify-between font-semibold text-gray-700">
@@ -464,7 +464,7 @@ const Home = () => {
             </div>
           </div>
         </Link>
-          <div className="p-4 border-2 border-gray-200 rounded-xl w-full h-[20rem] flex flex-col justify-between">
+          <div className="p-4 border-2 border-gray-200 rounded-xl w-full h-[20rem] flex flex-col justify-between cursor-pointer dashboard-card">
           <div>
             <div className="flex justify-between font-semibold text-gray-700">
               About to Expire
@@ -482,7 +482,7 @@ const Home = () => {
             <FaArrowRightLong />
           </Link>
         </div>
-          <div className="p-4 border-2 border-gray-200 rounded-xl w-full h-[20rem] flex flex-col justify-between">
+          <div className="p-4 border-2 border-gray-200 rounded-xl w-full h-[20rem] flex flex-col justify-between cursor-pointer dashboard-card">
           <div>
             <div className="flex justify-between font-semibold text-gray-700">
               Expired

@@ -39,8 +39,8 @@ const parser = multer({
 }).array("photos", 20);
 
 // Wrap multer so upload errors return clean JSON instead of an HTML stack.
-export const uploadPortfolioPhotos = (req, res, next) => {
-  parser(req, res, (err) => {
+const withJsonErrors = (handler) => (req, res, next) => {
+  handler(req, res, (err) => {
     if (err) {
       return res.status(400).json({
         success: false,
@@ -50,3 +50,15 @@ export const uploadPortfolioPhotos = (req, res, next) => {
     next();
   });
 };
+
+export const uploadPortfolioPhotos = withJsonErrors(parser);
+
+// Single profile / cover photo (Edit Portfolio → "Profile & Cover Photo").
+// Same storage, filter and 20MB limit as gallery photos.
+export const uploadPortfolioSinglePhoto = withJsonErrors(
+  multer({
+    storage,
+    fileFilter,
+    limits: { fileSize: 20 * 1024 * 1024, files: 1 },
+  }).single("photo")
+);

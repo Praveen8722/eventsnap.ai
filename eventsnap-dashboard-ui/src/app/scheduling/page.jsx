@@ -112,9 +112,26 @@ export default function SchedulingPage() {
   });
 
   // ── Unified calendar items: every booking + every scheduled event ─────────
+  // A booking with Event Days shows one entry per day (same booking, e.g.
+  // "Pooja - Client", "Wedding - Client"); otherwise one entry on eventDate.
+  const eventDayItems = (b) =>
+    b.eventDays.map((d, i) => ({
+      id: `b-${b._id || b.bookingId}-d${d._id || i}`,
+      date: d.date,
+      title: `${d.name || b.eventType || "Booking"} - ${b.clientName || ""}`.trim(),
+      // Event days have no times — only name, date, location and notes.
+      startTime: "",
+      endTime: "",
+      location: d.location || "",
+      customer: b.clientName || "",
+      eventType: b.eventType || "",
+      status: b.status || "",
+      color: EVENT_TYPE_COLOR[b.eventType] || DEFAULT_COLOR,
+      kind: "booking",
+    }));
   const bookingItems = bookings
-    .filter((b) => b.status !== "Cancelled" && b.eventDate)
-    .map((b) => ({
+    .filter((b) => b.status !== "Cancelled" && (b.eventDate || b.eventDays?.length))
+    .flatMap((b) => (b.eventDays?.length ? eventDayItems(b) : [{
       id: `b-${b._id || b.bookingId}`,
       date: b.eventDate,
       title: `${b.eventType || "Booking"} - ${b.clientName || ""}`.trim(),
@@ -126,7 +143,7 @@ export default function SchedulingPage() {
       status: b.status || "",
       color: EVENT_TYPE_COLOR[b.eventType] || DEFAULT_COLOR,
       kind: "booking",
-    }));
+    }]));
   const eventItems = events.map((ev) => ({
     id: `e-${ev._id}`,
     date: ev.date,
@@ -216,7 +233,7 @@ export default function SchedulingPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[70%_30%] gap-6 mt-8 ">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 cursor-pointer dashboard-card">
           <h2 className="text-lg font-semibold mb-8 mt-2 flex items-center justify-between">
             {monthLabel}
             <span className="flex items-center gap-6">
@@ -302,7 +319,7 @@ export default function SchedulingPage() {
         </div>
 
         <div className="flex flex-col gap-6 pr-0 lg:pr-6">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-300">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-300 cursor-pointer dashboard-card">
             <h3 className="font-semibold text-lg mb-4">Upcoming Events </h3>
             <div className="space-y-4">
               {upcoming.length === 0 && (
@@ -363,7 +380,7 @@ export default function SchedulingPage() {
             )}
           </div>
 
-          <div className="bg-gradient-to-r from-[#6C63FF] to-[#6C63FF]/80 p-6 rounded-xl shadow-sm text-white">
+          <div className="bg-gradient-to-r from-[#6C63FF] to-[#6C63FF]/80 p-6 rounded-xl shadow-sm text-white cursor-pointer dashboard-card">
             <h3 className="font-semibold mb-8">Quick Schedule</h3>
             <p className="text-sm mb-4">Add a new event to your calendar</p>
             <button
@@ -377,7 +394,7 @@ export default function SchedulingPage() {
         </div>
       </div>
 
-      <div className="bg-white mt-6 p-6 rounded-xl shadow-sm border border-gray-300">
+      <div className="bg-white mt-6 p-6 rounded-xl shadow-sm border border-gray-300 cursor-pointer dashboard-card">
         <h3 className="font-semibold mb-4">Event Types</h3>
         <div className="flex items-center flex-wrap gap-6">
           <p className="flex items-center gap-2">

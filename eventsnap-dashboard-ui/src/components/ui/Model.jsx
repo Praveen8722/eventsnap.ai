@@ -28,11 +28,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { IoCloseSharp } from "react-icons/io5";
+import { IoMdAdd } from "react-icons/io";
 import { LuUpload } from "react-icons/lu";
 import { createBooking, updateBooking, viewBookings } from "@/api/bookingApi";
 import { createInvoice, updateInvoice } from "@/api/invoiceApi";
 import { createEvent } from "@/api/eventApi";
 import { createGallery } from "@/api/galleryApi";
+import { isValidPhoneNumber } from "@/lib/phone";
 
 const methods = [
   { id: "cash", label: "Cash", icon: "💵" },
@@ -51,31 +53,19 @@ const colors = [
   "#D64545", // dark red
 ];
 
-// Fields required for bookings created internally (bookingId/status are set
-// server-side, advancePayment/additionalNotes are optional).
+// Fields required by the New / Edit Booking forms (bookingId/status are set
+// server-side; email, package price, advance payment and additional notes are
+// optional — the backend treats them the same way, saving an empty price or
+// advance as 0, so payment totals keep working).
 const REQUIRED_BOOKING_FIELDS = [
   ["clientName", "Client Name"],
-  ["email", "Email"],
   ["phone", "Phone"],
   ["eventType", "Event Type"],
   ["eventDate", "Event Date"],
   ["packageSelected", "Package"],
-  ["packegPrice", "Package Price"],
 ];
-// The public Portfolio "Book Now" form: email is optional there, only phone
-// is required from the customer.
-const PORTFOLIO_REQUIRED_BOOKING_FIELDS = REQUIRED_BOOKING_FIELDS.filter(
-  ([key]) => key !== "email"
-);
 // Placeholder <option> labels that must not count as a real selection.
 const BOOKING_PLACEHOLDER_VALUES = ["Select event type", "Select package"];
-
-// Accepts common phone formats (spaces, dashes, parens, leading +) as long as
-// the digits alone form a plausible phone number.
-const isValidPhoneNumber = (value) => {
-  const digits = String(value ?? "").replace(/\D/g, "");
-  return digits.length >= 7 && digits.length <= 15;
-};
 
 const Model = ({
   type,
@@ -106,6 +96,8 @@ const Model = ({
     packegPrice: "",
     advancePayment: "",
     additionalNotes: "",
+    // New Booking → optional multi-day schedule (one booking, many days).
+    eventDays: [],
   });
   const [paymentForm, setPaymentForm] = useState({
     amount: "",
@@ -161,26 +153,36 @@ const Model = ({
   const advance = Number(booking?.advancePayment) || 0;
   const extraPaid = (booking?.payments || []).reduce(
     (sum, p) => sum + (Number(p.amount) || 0),
-    0
+    0,
   );
   const totalPaid = booking?.totalPaid ?? advance + extraPaid;
   const remaining = booking?.remaining ?? Math.max(price - totalPaid, 0);
   const payStatus =
     booking?.paymentStatus ??
     booking?.payStatus ??
-    (price > 0 && totalPaid >= price ? "Paid" : totalPaid > 0 ? "Partial" : "Pending");
+    (price > 0 && totalPaid >= price
+      ? "Paid"
+      : totalPaid > 0
+        ? "Partial"
+        : "Pending");
 
   // This booking's payments, newest first, for the customer Payment Details view.
   const customerPayments = (() => {
     const rows = [];
     if (advance > 0) {
-      rows.push({ date: booking?.createdAt, amount: advance, method: "Advance" });
+      rows.push({
+        date: booking?.createdAt,
+        amount: advance,
+        method: "Advance",
+      });
     }
     for (const p of booking?.payments || []) {
       rows.push({
         date: p.date,
         amount: Number(p.amount) || 0,
-        method: p.method ? p.method.charAt(0).toUpperCase() + p.method.slice(1) : "—",
+        method: p.method
+          ? p.method.charAt(0).toUpperCase() + p.method.slice(1)
+          : "—",
       });
     }
     return rows.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
@@ -194,13 +196,22 @@ const Model = ({
         email: booking.email ?? "",
         phone: booking.phone ?? "",
         eventType: booking.eventType ?? "",
-        eventDate: booking.eventDate ? String(booking.eventDate).slice(0, 10) : "",
+        eventDate: booking.eventDate
+          ? String(booking.eventDate).slice(0, 10)
+          : "",
         eventTime: booking.eventTime ?? "",
         eventLocation: booking.eventLocation ?? "",
         packageSelected: booking.packageSelected ?? "",
         packegPrice: booking.packegPrice ?? "",
         advancePayment: booking.advancePayment ?? "",
         additionalNotes: booking.additionalNotes ?? "",
+        eventDays: (booking.eventDays || []).map((d) => ({
+          _key: nextEventDayKey(),
+          name: d.name ?? "",
+          date: d.date ? String(d.date).slice(0, 10) : "",
+          location: d.location ?? "",
+          notes: d.notes ?? "",
+        })),
       });
     }
   }, [booking, type]);
@@ -218,7 +229,10 @@ const Model = ({
       });
     }
     if (type === "invoice") {
-      setInvoiceForm((f) => ({ ...f, amount: String(remaining || price || "") }));
+      setInvoiceForm((f) => ({
+        ...f,
+        amount: String(remaining || price || ""),
+      }));
     }
   }, [booking, type, price, totalPaid, remaining]);
 
@@ -232,9 +246,13 @@ const Model = ({
         const list = response.data?.bookings ?? [];
         setAvailableBookings(list);
         if (list.length) {
-          if (type === "invoice") setSelectedInvoiceBookingId(list[0].bookingId);
+          if (type === "invoice")
+            setSelectedInvoiceBookingId(list[0].bookingId);
           if (type === "gallery") {
-            setGalleryForm((f) => ({ ...f, bookingId: f.bookingId || list[0].bookingId }));
+            setGalleryForm((f) => ({
+              ...f,
+              bookingId: f.bookingId || list[0].bookingId,
+            }));
           }
         }
       } catch (error) {
@@ -328,27 +346,188 @@ const Model = ({
     setBookingData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // ── New / Edit Booking → Event Days ──────────────────────────────────────
+  // Any number of separate, non-consecutive days on the same booking. Each day
+  // has a name and date (required) plus optional location and notes; with
+  // days present the booking's Event Date is the earliest day.
+  const eventDays = bookingData.eventDays || [];
+  const hasEventDays =
+    (type === "newBooking" || type === "editBooking") && eventDays.length > 0;
+  const earliestEventDayDate =
+    eventDays
+      .map((d) => d.date)
+      .filter(Boolean)
+      .sort()[0] || "";
+  // Event Date follows the earliest event day only once a day has a date — a
+  // freshly added (still blank) day never clears or locks what was typed, and
+  // the typed value comes back if every day is removed.
+  const eventDateFromDays = hasEventDays && earliestEventDayDate !== "";
+  const effectiveEventDate = eventDateFromDays ? earliestEventDayDate : bookingData.eventDate;
+  // Each card gets a stable client-side key (never sent to the API) so React
+  // keeps every card's inputs attached to the right day when one is removed.
+  const eventDayKeyRef = useRef(0);
+  function nextEventDayKey() {
+    eventDayKeyRef.current += 1;
+    return `event-day-${eventDayKeyRef.current}`;
+  }
+  const withEventDayKeys = (days) =>
+    days.map((d) => (d._key ? d : { ...d, _key: nextEventDayKey() }));
+  // Days as the API expects them — only name, date, location and notes.
+  const eventDaysForApi = eventDays.map(({ name, date, location, notes }) => ({
+    name,
+    date,
+    location,
+    notes,
+  }));
+  const focusEventDayRef = useRef(null);
+  const addEventDay = () => {
+    const key = nextEventDayKey();
+    focusEventDayRef.current = key;
+    setBookingData((prev) => ({
+      ...prev,
+      eventDays: [
+        ...withEventDayKeys(prev.eventDays || []),
+        { _key: key, name: "", date: "", location: "", notes: "" },
+      ],
+    }));
+  };
+  // Bring a newly added card into view and put the cursor in its name field.
+  useEffect(() => {
+    const key = focusEventDayRef.current;
+    if (!key) return;
+    const input = document.getElementById(`${key}-name`);
+    if (!input) return;
+    focusEventDayRef.current = null;
+    input.focus({ preventScroll: true });
+    input
+      .closest("[data-event-day]")
+      ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [eventDays.length]);
+  const updateEventDay = (key, field, value) =>
+    setBookingData((prev) => ({
+      ...prev,
+      eventDays: (prev.eventDays || []).map((d) =>
+        d._key === key ? { ...d, [field]: value } : d,
+      ),
+    }));
+  const removeEventDay = (key) =>
+    setBookingData((prev) => ({
+      ...prev,
+      eventDays: (prev.eventDays || []).filter((d) => d._key !== key),
+    }));
+  // `nested`: rendered as a field group inside "Event Details" (New Booking),
+  // so its title matches the other field labels instead of a section heading.
+  const renderEventDays = ({ nested = false } = {}) => (
+    <div>
+      <p className={nested ? "text-sm text-gray-700" : "font-medium text-gray-700"}>
+        Event Days (Optional)
+      </p>
+      <p className="text-xs text-gray-400 mt-1">
+        Add each day of a multi-day booking, e.g. Pooja, Pre-wedding, Wedding.
+        Dates don&apos;t need to be consecutive.
+      </p>
+      {eventDays.length > 0 && (
+        <div className="mt-4 space-y-4">
+          {eventDays.map((day, index) => (
+            <div
+              key={day._key}
+              data-event-day={day._key}
+              className="border border-gray-300 rounded-lg p-4 text-sm"
+            >
+              <div className="flex items-center justify-between">
+                <p className="font-medium text-gray-700">Day {index + 1}</p>
+                <button
+                  type="button"
+                  onClick={() => removeEventDay(day._key)}
+                  aria-label={`Remove event day ${index + 1}`}
+                  title="Remove this day"
+                  className="w-8 h-8 -mr-1 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-red-500 transition cursor-pointer"
+                >
+                  <IoCloseSharp className="text-lg" />
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                <div>
+                  <label htmlFor={`${day._key}-name`} className="text-gray-700">
+                    Event Name
+                  </label>
+                  <input
+                    id={`${day._key}-name`}
+                    value={day.name}
+                    onChange={(e) =>
+                      updateEventDay(day._key, "name", e.target.value)
+                    }
+                    className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
+                    placeholder="e.g. Pooja, Pre-wedding, Wedding"
+                  />
+                </div>
+                <div>
+                  <label htmlFor={`${day._key}-date`} className="text-gray-700">
+                    Date
+                  </label>
+                  <input
+                    id={`${day._key}-date`}
+                    type="date"
+                    value={day.date}
+                    onChange={(e) =>
+                      updateEventDay(day._key, "date", e.target.value)
+                    }
+                    className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={addEventDay}
+        className="mt-4 w-full flex items-center justify-center gap-2 border border-dashed border-[#6C63FF] text-[#6C63FF] rounded-lg py-2 text-sm font-semibold hover:bg-[#EEF0FF] transition cursor-pointer"
+      >
+        <IoMdAdd className="text-lg" />
+        Add Event Day
+      </button>
+    </div>
+  );
+
   const validateBookingForm = () => {
-    // Only the public Portfolio "Book Now" form (newBooking + bookingSource
-    // "portfolio") makes email optional — internal booking forms are unchanged.
-    const isPortfolioBooking = type === "newBooking" && bookingSource === "portfolio";
-    const requiredFields = isPortfolioBooking
-      ? PORTFOLIO_REQUIRED_BOOKING_FIELDS
-      : REQUIRED_BOOKING_FIELDS;
+    // Email is optional in New and Edit Booking; phone is required. New
+    // Booking also checks the phone format (same shared validator as the
+    // Portfolio Send Enquiry form).
+    const isNewBooking = type === "newBooking";
+    const requiredFields = REQUIRED_BOOKING_FIELDS;
+    if (hasEventDays) {
+      const bad = eventDays.findIndex(
+        (d) => !String(d.name ?? "").trim() || !d.date,
+      );
+      if (bad !== -1) {
+        alert(`Event Day ${bad + 1}: event name and date are required`);
+        return false;
+      }
+    }
+    const values = { ...bookingData, eventDate: effectiveEventDate };
     const missing = requiredFields.filter(([key]) => {
-      const value = String(bookingData[key] ?? "").trim();
+      const value = String(values[key] ?? "").trim();
       return !value || BOOKING_PLACEHOLDER_VALUES.includes(value);
     });
     if (missing.length) {
-      alert(`Please fill all required fields: ${missing.map(([, label]) => label).join(", ")}`);
+      alert(
+        `Please fill all required fields: ${missing.map(([, label]) => label).join(", ")}`,
+      );
       return false;
     }
-    if (isPortfolioBooking && !isValidPhoneNumber(bookingData.phone)) {
+    if (isNewBooking && !isValidPhoneNumber(bookingData.phone)) {
       alert("Please enter a valid phone number");
       return false;
     }
-    if (Number.isNaN(Number(bookingData.packegPrice))) {
+    // Optional amounts: empty is fine, but anything entered must be a number.
+    if (Number.isNaN(Number(String(bookingData.packegPrice ?? "").trim()))) {
       alert("Package Price must be a number");
+      return false;
+    }
+    if (Number.isNaN(Number(String(bookingData.advancePayment ?? "").trim()))) {
+      alert("Advance Payment must be a number");
       return false;
     }
     return true;
@@ -362,6 +541,8 @@ const Model = ({
     try {
       await createBooking({
         ...bookingData,
+        eventDate: effectiveEventDate,
+        eventDays: hasEventDays ? eventDaysForApi : [],
         source: bookingSource === "portfolio" ? "portfolio" : "internal",
         // Identifies which photographer's portfolio this came from — the
         // backend resolves ownership from this, never from anything else.
@@ -387,7 +568,11 @@ const Model = ({
     if (!booking) return;
     if (!validateBookingForm()) return;
     try {
-      await updateBooking(booking.bookingId, bookingData);
+      await updateBooking(booking.bookingId, {
+        ...bookingData,
+        eventDate: effectiveEventDate,
+        eventDays: eventDaysForApi,
+      });
       window.dispatchEvent(new CustomEvent("eventsnap-bookings-updated"));
       await onSaved?.();
       onClose();
@@ -428,12 +613,18 @@ const Model = ({
     e.preventDefault();
     if (busyRef.current) return;
     const selectedBooking =
-      booking ?? availableBookings.find((item) => item.bookingId === selectedInvoiceBookingId);
+      booking ??
+      availableBookings.find(
+        (item) => item.bookingId === selectedInvoiceBookingId,
+      );
     if (!selectedBooking) {
       alert("Please select a booking to create an invoice");
       return;
     }
-    if (Number.isNaN(Number(invoiceForm.amount)) || Number(invoiceForm.amount) <= 0) {
+    if (
+      Number.isNaN(Number(invoiceForm.amount)) ||
+      Number(invoiceForm.amount) <= 0
+    ) {
       alert("Invoice amount must be a positive number");
       return;
     }
@@ -528,12 +719,16 @@ const Model = ({
       return;
     }
     // Opened from a booking → use that booking directly; otherwise use the picker.
-    const linked = booking || availableBookings.find((b) => b.bookingId === galleryForm.bookingId);
+    const linked =
+      booking ||
+      availableBookings.find((b) => b.bookingId === galleryForm.bookingId);
     if (!linked) {
       alert("Please select the related booking");
       return;
     }
-    const files = (galleryForm.files || []).filter((f) => f.type.startsWith("image/"));
+    const files = (galleryForm.files || []).filter((f) =>
+      f.type.startsWith("image/"),
+    );
     if (!files.length) {
       alert("Please select at least one photo to upload");
       return;
@@ -551,7 +746,9 @@ const Model = ({
       window.dispatchEvent(new CustomEvent("eventsnap-gallery-updated"));
       await onSaved?.();
       onClose();
-      alert(`Gallery created — ${files.length} photo(s) uploaded for ${linked.clientName}`);
+      alert(
+        `Gallery created — ${files.length} photo(s) uploaded for ${linked.clientName}`,
+      );
     } catch (error) {
       alert(error?.response?.data?.message || "Failed to create gallery");
     } finally {
@@ -577,14 +774,19 @@ const Model = ({
     const targetBalance = booking
       ? remaining
       : payBooking
-      ? Math.max((Number(payBooking.price) || 0) - (Number(payBooking.paid) || 0), 0)
-      : Infinity;
+        ? Math.max(
+            (Number(payBooking.price) || 0) - (Number(payBooking.paid) || 0),
+            0,
+          )
+        : Infinity;
     if (targetBalance <= 0) {
       alert("This booking is already fully paid");
       return;
     }
     if (amount > targetBalance + 0.01) {
-      alert(`Payment exceeds the remaining balance of ₹${targetBalance.toLocaleString("en-IN")}`);
+      alert(
+        `Payment exceeds the remaining balance of ₹${targetBalance.toLocaleString("en-IN")}`,
+      );
       return;
     }
     // No payments sub-collection exists on the backend — fold the amount into
@@ -592,7 +794,9 @@ const Model = ({
     const currentAdvance = booking ? advance : Number(payBooking?.paid) || 0;
     busyRef.current = true;
     try {
-      await updateBooking(targetId, { advancePayment: currentAdvance + amount });
+      await updateBooking(targetId, {
+        advancePayment: currentAdvance + amount,
+      });
       window.dispatchEvent(new CustomEvent("eventsnap-bookings-updated"));
       window.dispatchEvent(new CustomEvent("eventsnap-invoices-updated"));
       await onSaved?.();
@@ -626,7 +830,9 @@ const Model = ({
       return;
     }
     if (amount > remaining + 0.01) {
-      alert(`Payment exceeds the remaining balance of ₹${remaining.toLocaleString("en-IN")}`);
+      alert(
+        `Payment exceeds the remaining balance of ₹${remaining.toLocaleString("en-IN")}`,
+      );
       return;
     }
     setDetailPaymentBusy(true);
@@ -653,9 +859,13 @@ const Model = ({
       ["startTime", "Start Time"],
       ["endTime", "End Time"],
     ];
-    const missing = required.filter(([key]) => !String(eventForm[key] ?? "").trim());
+    const missing = required.filter(
+      ([key]) => !String(eventForm[key] ?? "").trim(),
+    );
     if (missing.length) {
-      alert(`Please fill all required fields: ${missing.map(([, label]) => label).join(", ")}`);
+      alert(
+        `Please fill all required fields: ${missing.map(([, label]) => label).join(", ")}`,
+      );
       return;
     }
     busyRef.current = true;
@@ -675,13 +885,27 @@ const Model = ({
   // For the booking-scoped Record Payment modal, restrict the picker to this booking.
   // Otherwise show every real booking with its live paid/balance figures.
   const paymentBookingOptions = booking
-    ? [{ id: booking.bookingId, client: booking.clientName, event: booking.eventType, price, paid: totalPaid }]
+    ? [
+        {
+          id: booking.bookingId,
+          client: booking.clientName,
+          event: booking.eventType,
+          price,
+          paid: totalPaid,
+        },
+      ]
     : paymentBookings.map((b) => {
         const bPrice = Number(b.packegPrice) || 0;
         const bPaid =
           (Number(b.advancePayment) || 0) +
           (b.payments || []).reduce((s, p) => s + (Number(p.amount) || 0), 0);
-        return { id: b.bookingId, client: b.clientName, event: b.eventType, price: bPrice, paid: bPaid };
+        return {
+          id: b.bookingId,
+          client: b.clientName,
+          event: b.eventType,
+          price: bPrice,
+          paid: bPaid,
+        };
       });
 
   return (
@@ -761,26 +985,26 @@ const Model = ({
                   <label className="text-sm text-gray-700">Event Date</label>
                   <input
                     name="eventDate"
-                    value={bookingData.eventDate}
+                    value={effectiveEventDate}
                     onChange={handleChange}
+                    readOnly={eventDateFromDays}
                     type="date"
                     className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
                   />
+                  {eventDateFromDays && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      Set from the earliest event day
+                    </p>
+                  )}
                 </div>
               </div>
+              {/* Event Days sit directly above the Location field in New Booking. */}
+              <div className="mt-4">{renderEventDays({ nested: true })}</div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
                 <div>
-                  <label className="text-sm text-gray-700">Event Time (Optional)</label>
-                  <input
-                    name="eventTime"
-                    value={bookingData.eventTime}
-                    onChange={handleChange}
-                    type="time"
-                    className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-700">Location (Optional)</label>
+                  <label className="text-sm text-gray-700">
+                    Location (Optional)
+                  </label>
                   <input
                     name="eventLocation"
                     value={bookingData.eventLocation}
@@ -789,22 +1013,22 @@ const Model = ({
                     placeholder="e.g. Grand Hotel, Studio B"
                   />
                 </div>
-              </div>
-              <div className="mt-4 text-sm">
-                <label className=" text-gray-700">Package</label>
-                <select
-                  name="packageSelected"
-                  value={bookingData.packageSelected}
-                  onChange={handleChange}
-                  className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
-                >
-                  <option>Select package</option>
-                  <option>Basic Package</option>
-                  <option>Standard Package</option>
-                  <option>Premium Package</option>
-                  <option>Deluxe Package</option>
-                  <option>Custom Package</option>
-                </select>
+                <div>
+                  <label className="text-sm text-gray-700">Package</label>
+                  <select
+                    name="packageSelected"
+                    value={bookingData.packageSelected}
+                    onChange={handleChange}
+                    className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
+                  >
+                    <option>Select package</option>
+                    <option>Basic Package</option>
+                    <option>Standard Package</option>
+                    <option>Premium Package</option>
+                    <option>Deluxe Package</option>
+                    <option>Custom Package</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -812,7 +1036,7 @@ const Model = ({
               <p className="font-medium text-gray-700">Payment Details</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
                 <div>
-                  <label className=" text-gray-700">Package Price</label>
+                  <label className=" text-gray-700">Package Price (Optional)</label>
                   <input
                     name="packegPrice"
                     value={bookingData.packegPrice}
@@ -822,7 +1046,7 @@ const Model = ({
                   />
                 </div>
                 <div>
-                  <label className=" text-gray-700">Advance Payment</label>
+                  <label className=" text-gray-700">Advance Payment (Optional)</label>
                   <input
                     name="advancePayment"
                     value={bookingData.advancePayment}
@@ -866,7 +1090,9 @@ const Model = ({
       {type === "editBooking" && (
         <div className="bg-white w-full max-w-2xl rounded-2xl shadow-lg overflow-y-auto max-h-[90vh]">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-300">
-            <h2 className="text-lg font-semibold">Edit Booking - {booking?.bookingId || ""}</h2>
+            <h2 className="text-lg font-semibold">
+              Edit Booking - {booking?.bookingId || ""}
+            </h2>
             <button
               onClick={onClose}
               className="w-10 h-10 rounded-lg flex items-center justify-center hover:bg-gray-100 transition cursor-pointer"
@@ -936,15 +1162,21 @@ const Model = ({
                   <label className="text-sm text-gray-700">Event Date</label>
                   <input
                     name="eventDate"
-                    value={bookingData.eventDate}
+                    value={effectiveEventDate}
                     onChange={handleChange}
+                    readOnly={eventDateFromDays}
                     type="date"
                     className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
                   />
+                  {eventDateFromDays && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      Set from the earliest event day
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
-                <div>
+                {/* <div>
                   <label className="text-sm text-gray-700">Event Time (Optional)</label>
                   <input
                     name="eventTime"
@@ -953,9 +1185,11 @@ const Model = ({
                     type="time"
                     className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
                   />
-                </div>
+                </div> */}
                 <div>
-                  <label className="text-sm text-gray-700">Location (Optional)</label>
+                  <label className="text-sm text-gray-700">
+                    Location (Optional)
+                  </label>
                   <input
                     name="eventLocation"
                     value={bookingData.eventLocation}
@@ -983,11 +1217,13 @@ const Model = ({
               </div>
             </div>
 
+            {renderEventDays()}
+
             <div>
               <p className="font-medium text-gray-700">Payment Details</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
                 <div>
-                  <label className=" text-gray-700">Package Price</label>
+                  <label className=" text-gray-700">Package Price (Optional)</label>
                   <input
                     name="packegPrice"
                     value={bookingData.packegPrice}
@@ -997,7 +1233,7 @@ const Model = ({
                   />
                 </div>
                 <div>
-                  <label className=" text-gray-700">Advance Payment</label>
+                  <label className=" text-gray-700">Advance Payment (Optional)</label>
                   <input
                     name="advancePayment"
                     value={bookingData.advancePayment}
@@ -1060,7 +1296,9 @@ const Model = ({
               <h2 className="text-lg font-semibold mb-6">Payment Summary</h2>
               <div className="flex justify-between items-center mb-4">
                 <span className="text-gray-500">Package Price</span>
-                <span className="px-3 text-sm font-medium">₹{price.toLocaleString("en-IN")}</span>
+                <span className="px-3 text-sm font-medium">
+                  ₹{price.toLocaleString("en-IN")}
+                </span>
               </div>
               <div className="flex justify-between items-center mb-4">
                 <span className="text-gray-500">Total Paid</span>
@@ -1145,7 +1383,7 @@ const Model = ({
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
-                <div>
+                {/* <div>
                   <label className="text-sm text-gray-700">Event Time (Optional)</label>
                   <input
                     name="eventTime"
@@ -1154,9 +1392,11 @@ const Model = ({
                     type="time"
                     className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
                   />
-                </div>
+                </div> */}
                 <div>
-                  <label className="text-sm text-gray-700">Location (Optional)</label>
+                  <label className="text-sm text-gray-700">
+                    Location (Optional)
+                  </label>
                   <input
                     name="eventLocation"
                     value={bookingData.eventLocation}
@@ -1257,7 +1497,9 @@ const Model = ({
                 <label className=" text-gray-700">Gallery Title</label>
                 <input
                   value={galleryForm.title}
-                  onChange={(e) => setGalleryForm((f) => ({ ...f, title: e.target.value }))}
+                  onChange={(e) =>
+                    setGalleryForm((f) => ({ ...f, title: e.target.value }))
+                  }
                   className="mt-1 w-full  border border-gray-300 rounded-lg px-4 py-2 outline-none"
                   placeholder="e.g., Sarah & Praveen Wedding 2025"
                 />
@@ -1266,7 +1508,9 @@ const Model = ({
 
             <div>
               <div className="mt-4 text-sm">
-                <label className=" text-gray-700">{booking ? "Client & Booking" : "Select Client"}</label>
+                <label className=" text-gray-700">
+                  {booking ? "Client & Booking" : "Select Client"}
+                </label>
                 {booking ? (
                   <div className="mt-1 w-full border border-gray-200 bg-gray-50 rounded-lg px-4 py-2 text-gray-700">
                     {booking.bookingId} — {booking.clientName}
@@ -1275,10 +1519,17 @@ const Model = ({
                 ) : (
                   <select
                     value={galleryForm.bookingId}
-                    onChange={(e) => setGalleryForm((f) => ({ ...f, bookingId: e.target.value }))}
+                    onChange={(e) =>
+                      setGalleryForm((f) => ({
+                        ...f,
+                        bookingId: e.target.value,
+                      }))
+                    }
                     className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
                   >
-                    {!availableBookings.length && <option value="">Choose a client...</option>}
+                    {!availableBookings.length && (
+                      <option value="">Choose a client...</option>
+                    )}
                     {availableBookings.map((b) => (
                       <option key={b.bookingId} value={b.bookingId}>
                         {b.bookingId} - {b.clientName} - {b.eventType}
@@ -1295,7 +1546,9 @@ const Model = ({
                 <div className="text-gray-500 text-4xl mb-3">
                   <LuUpload />
                 </div>
-                <p className="text-gray-600 font-medium">Drag and drop photos here</p>
+                <p className="text-gray-600 font-medium">
+                  Drag and drop photos here
+                </p>
                 <p className="text-gray-400 text-sm mt-1">or click to browse</p>
                 <span className="mt-4 bg-[#6C63FF] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5a54e6] transition">
                   Select Files
@@ -1305,13 +1558,18 @@ const Model = ({
                   accept="image/*"
                   multiple
                   onChange={(e) =>
-                    setGalleryForm((f) => ({ ...f, files: Array.from(e.target.files || []) }))
+                    setGalleryForm((f) => ({
+                      ...f,
+                      files: Array.from(e.target.files || []),
+                    }))
                   }
                   className="hidden"
                 />
               </label>
               {galleryForm.files.length > 0 && (
-                <p className="text-gray-500 text-sm mt-2">{galleryForm.files.length} photo(s) selected</p>
+                <p className="text-gray-500 text-sm mt-2">
+                  {galleryForm.files.length} photo(s) selected
+                </p>
               )}
             </div>
 
@@ -1320,7 +1578,9 @@ const Model = ({
                 type="checkbox"
                 id="watermark"
                 checked={galleryForm.watermark}
-                onChange={(e) => setGalleryForm((f) => ({ ...f, watermark: e.target.checked }))}
+                onChange={(e) =>
+                  setGalleryForm((f) => ({ ...f, watermark: e.target.checked }))
+                }
                 className="w-4 h-4"
               />
               <label htmlFor="watermark" className="text-sm">
@@ -1373,14 +1633,19 @@ const Model = ({
                 ) : (
                   <select
                     value={selectedInvoiceBookingId}
-                    onChange={(e) => setSelectedInvoiceBookingId(e.target.value)}
+                    onChange={(e) =>
+                      setSelectedInvoiceBookingId(e.target.value)
+                    }
                     className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
                   >
-                    {!availableBookings.length && <option value="">Choose a booking...</option>}
+                    {!availableBookings.length && (
+                      <option value="">Choose a booking...</option>
+                    )}
                     {availableBookings.length > 0 ? (
                       availableBookings.map((item) => (
                         <option key={item.bookingId} value={item.bookingId}>
-                          {item.bookingId} - {item.clientName} - {item.eventType}
+                          {item.bookingId} - {item.clientName} -{" "}
+                          {item.eventType}
                         </option>
                       ))
                     ) : (
@@ -1394,7 +1659,9 @@ const Model = ({
                   <label className=" text-gray-700">Invoice Amount (₹)</label>
                   <input
                     value={invoiceForm.amount}
-                    onChange={(e) => setInvoiceForm((f) => ({ ...f, amount: e.target.value }))}
+                    onChange={(e) =>
+                      setInvoiceForm((f) => ({ ...f, amount: e.target.value }))
+                    }
                     className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
                     placeholder="₹ 0.00"
                   />
@@ -1404,7 +1671,9 @@ const Model = ({
                   <input
                     type="date"
                     value={invoiceForm.dueDate}
-                    onChange={(e) => setInvoiceForm((f) => ({ ...f, dueDate: e.target.value }))}
+                    onChange={(e) =>
+                      setInvoiceForm((f) => ({ ...f, dueDate: e.target.value }))
+                    }
                     className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
                   />
                 </div>
@@ -1415,7 +1684,9 @@ const Model = ({
               <p className="font-medium text-gray-700">Description / Items</p>
               <textarea
                 value={invoiceForm.description}
-                onChange={(e) => setInvoiceForm((f) => ({ ...f, description: e.target.value }))}
+                onChange={(e) =>
+                  setInvoiceForm((f) => ({ ...f, description: e.target.value }))
+                }
                 className="text-sm mt-2 w-full border border-gray-300 rounded-lg px-4 py-3 h-30 outline-none resize-none"
                 placeholder="Enter invoice item and description..."
               />
@@ -1425,7 +1696,9 @@ const Model = ({
               <p className="font-medium text-gray-700">Additional Notes</p>
               <textarea
                 value={invoiceForm.notes}
-                onChange={(e) => setInvoiceForm((f) => ({ ...f, notes: e.target.value }))}
+                onChange={(e) =>
+                  setInvoiceForm((f) => ({ ...f, notes: e.target.value }))
+                }
                 className="text-sm mt-2 w-full border border-gray-300 rounded-lg px-4 py-3 h-25 outline-none resize-none"
                 placeholder="Payment terms, bank details, etc..."
               />
@@ -1453,7 +1726,9 @@ const Model = ({
         <div className="bg-white w-full max-w-2xl rounded-2xl shadow-lg overflow-y-auto max-h-[90vh]">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-300">
             <div>
-              <h2 className="text-lg font-semibold">Invoice {invoice.invoiceId}</h2>
+              <h2 className="text-lg font-semibold">
+                Invoice {invoice.invoiceId}
+              </h2>
               <h2 className="text-xs font-semibold text-gray-600">
                 {invoice.clientName} - {invoice.bookingId}
               </h2>
@@ -1470,14 +1745,21 @@ const Model = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>
                 <label className=" text-gray-700">Client</label>
-                <p className="mt-1 font-medium text-gray-800">{invoice.clientName}</p>
+                <p className="mt-1 font-medium text-gray-800">
+                  {invoice.clientName}
+                </p>
                 <p className="text-gray-500">{invoice.email}</p>
               </div>
               <div>
                 <label className=" text-gray-700">Booking</label>
-                <p className="mt-1 font-medium text-gray-800">{invoice.bookingId}</p>
+                <p className="mt-1 font-medium text-gray-800">
+                  {invoice.bookingId}
+                </p>
                 <p className="text-gray-500">
-                  Issued {invoice.createdAt ? new Date(invoice.createdAt).toLocaleDateString("en-GB") : "-"}
+                  Issued{" "}
+                  {invoice.createdAt
+                    ? new Date(invoice.createdAt).toLocaleDateString("en-GB")
+                    : "-"}
                 </p>
               </div>
             </div>
@@ -1487,7 +1769,12 @@ const Model = ({
                 <label className=" text-gray-700">Invoice Amount (₹)</label>
                 <input
                   value={invoiceEditForm.amount}
-                  onChange={(e) => setInvoiceEditForm((f) => ({ ...f, amount: e.target.value }))}
+                  onChange={(e) =>
+                    setInvoiceEditForm((f) => ({
+                      ...f,
+                      amount: e.target.value,
+                    }))
+                  }
                   className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
                   placeholder="₹ 0.00"
                 />
@@ -1497,7 +1784,12 @@ const Model = ({
                 <input
                   type="date"
                   value={invoiceEditForm.dueDate}
-                  onChange={(e) => setInvoiceEditForm((f) => ({ ...f, dueDate: e.target.value }))}
+                  onChange={(e) =>
+                    setInvoiceEditForm((f) => ({
+                      ...f,
+                      dueDate: e.target.value,
+                    }))
+                  }
                   className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
                 />
               </div>
@@ -1505,7 +1797,12 @@ const Model = ({
                 <label className="text-sm text-gray-700">Status</label>
                 <select
                   value={invoiceEditForm.status}
-                  onChange={(e) => setInvoiceEditForm((f) => ({ ...f, status: e.target.value }))}
+                  onChange={(e) =>
+                    setInvoiceEditForm((f) => ({
+                      ...f,
+                      status: e.target.value,
+                    }))
+                  }
                   className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
                 >
                   <option>Draft</option>
@@ -1519,7 +1816,12 @@ const Model = ({
               <p className="font-medium text-gray-700">Description / Items</p>
               <textarea
                 value={invoiceEditForm.description}
-                onChange={(e) => setInvoiceEditForm((f) => ({ ...f, description: e.target.value }))}
+                onChange={(e) =>
+                  setInvoiceEditForm((f) => ({
+                    ...f,
+                    description: e.target.value,
+                  }))
+                }
                 className="text-sm mt-2 w-full border border-gray-300 rounded-lg px-4 py-3 h-30 outline-none resize-none"
                 placeholder="Enter invoice item and description..."
               />
@@ -1529,7 +1831,9 @@ const Model = ({
               <p className="font-medium text-gray-700">Additional Notes</p>
               <textarea
                 value={invoiceEditForm.notes}
-                onChange={(e) => setInvoiceEditForm((f) => ({ ...f, notes: e.target.value }))}
+                onChange={(e) =>
+                  setInvoiceEditForm((f) => ({ ...f, notes: e.target.value }))
+                }
                 className="text-sm mt-2 w-full border border-gray-300 rounded-lg px-4 py-3 h-25 outline-none resize-none"
                 placeholder="Payment terms, bank details, etc..."
               />
@@ -1589,11 +1893,15 @@ const Model = ({
               <hr className="border-gray-200 mb-4" />
               <div className="flex justify-between items-center mb-3">
                 <span className="text-gray-500">Package Amount</span>
-                <span className="text-sm font-medium">₹{price.toLocaleString("en-IN")}</span>
+                <span className="text-sm font-medium">
+                  ₹{price.toLocaleString("en-IN")}
+                </span>
               </div>
               <div className="flex justify-between items-center mb-3">
                 <span className="text-gray-500">Advance Amount</span>
-                <span className="text-sm font-medium">₹{advance.toLocaleString("en-IN")}</span>
+                <span className="text-sm font-medium">
+                  ₹{advance.toLocaleString("en-IN")}
+                </span>
               </div>
               <div className="flex justify-between items-center mb-3">
                 <span className="text-gray-500">Total Paid</span>
@@ -1616,10 +1924,10 @@ const Model = ({
                 payStatus === "Paid"
                   ? "bg-green-100 text-green-700"
                   : payStatus === "Partial"
-                  ? "bg-yellow-100 text-yellow-700"
-                  : payStatus === "Pending"
-                  ? "bg-red-100 text-red-700"
-                  : "bg-gray-100 text-gray-600"
+                    ? "bg-yellow-100 text-yellow-700"
+                    : payStatus === "Pending"
+                      ? "bg-red-100 text-red-700"
+                      : "bg-gray-100 text-gray-600"
               }`}
                 >
                   {payStatus}
@@ -1656,19 +1964,28 @@ const Model = ({
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-green-600 font-medium">This booking is fully paid.</p>
+              <p className="text-sm text-green-600 font-medium">
+                This booking is fully paid.
+              </p>
             )}
 
             <div>
               <p className="font-medium text-gray-700 mb-3">Payment History</p>
               <div className="space-y-2">
                 {customerPayments.length === 0 && (
-                  <p className="text-sm text-gray-400">No payments recorded yet</p>
+                  <p className="text-sm text-gray-400">
+                    No payments recorded yet
+                  </p>
                 )}
                 {customerPayments.map((p, i) => (
-                  <div key={i} className="bg-gray-50 p-3 rounded-lg flex items-center justify-between text-sm">
+                  <div
+                    key={i}
+                    className="bg-gray-50 p-3 rounded-lg flex items-center justify-between text-sm"
+                  >
                     <span className="text-gray-500">
-                      {p.date ? new Date(p.date).toLocaleDateString("en-GB") : "-"}
+                      {p.date
+                        ? new Date(p.date).toLocaleDateString("en-GB")
+                        : "-"}
                     </span>
                     <span className="font-semibold text-gray-700">
                       ₹{(Number(p.amount) || 0).toLocaleString("en-IN")}
@@ -1714,7 +2031,9 @@ const Model = ({
               <h2 className="text-lg font-semibold mb-6">Payment Summary</h2>
               <div className="flex justify-between items-center mb-4">
                 <span className="text-gray-500">Package Price</span>
-                <span className="px-3 text-sm font-medium">₹{price.toLocaleString("en-IN")}</span>
+                <span className="px-3 text-sm font-medium">
+                  ₹{price.toLocaleString("en-IN")}
+                </span>
               </div>
               <div className="flex justify-between items-center mb-4">
                 <span className="text-gray-500">Total Paid</span>
@@ -1736,22 +2055,30 @@ const Model = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
                 <div>
                   <label className=" text-gray-700">Event</label>
-                  <p className="mt-1 font-medium text-gray-800">{booking.eventType}</p>
+                  <p className="mt-1 font-medium text-gray-800">
+                    {booking.eventType}
+                  </p>
                 </div>
                 <div>
                   <label className=" text-gray-700">Event Date</label>
                   <p className="mt-1 font-medium text-gray-800">
-                    {booking.eventDate ? new Date(booking.eventDate).toLocaleDateString("en-GB") : "TBD"}
+                    {booking.eventDate
+                      ? new Date(booking.eventDate).toLocaleDateString("en-GB")
+                      : "TBD"}
                     {booking.eventTime ? ` · ${booking.eventTime}` : ""}
                   </p>
                 </div>
                 <div>
                   <label className=" text-gray-700">Email</label>
-                  <p className="mt-1 font-medium text-gray-800">{booking.email || "— not saved —"}</p>
+                  <p className="mt-1 font-medium text-gray-800">
+                    {booking.email || "— not saved —"}
+                  </p>
                 </div>
                 <div>
                   <label className=" text-gray-700">Phone</label>
-                  <p className="mt-1 font-medium text-gray-800">{booking.phone || "— not saved —"}</p>
+                  <p className="mt-1 font-medium text-gray-800">
+                    {booking.phone || "— not saved —"}
+                  </p>
                 </div>
               </div>
             </div>
@@ -1760,15 +2087,27 @@ const Model = ({
               <p className="text-sm text-gray-700 mb-3">Send Via *</p>
               <div className="grid grid-cols-3 gap-4">
                 {[
-                  { id: "email", label: "Email", icon: "✉️", ok: !!booking.email },
+                  {
+                    id: "email",
+                    label: "Email",
+                    icon: "✉️",
+                    ok: !!booking.email,
+                  },
                   { id: "sms", label: "SMS", icon: "💬", ok: !!booking.phone },
-                  { id: "both", label: "Both", icon: "📨", ok: !!booking.email && !!booking.phone },
+                  {
+                    id: "both",
+                    label: "Both",
+                    icon: "📨",
+                    ok: !!booking.email && !!booking.phone,
+                  },
                 ].map((c) => (
                   <button
                     key={c.id}
                     type="button"
                     disabled={!c.ok}
-                    onClick={() => setReminderForm((f) => ({ ...f, channel: c.id }))}
+                    onClick={() =>
+                      setReminderForm((f) => ({ ...f, channel: c.id }))
+                    }
                     className={`flex flex-col items-center justify-center p-3 rounded-xl border transition
               ${
                 reminderForm.channel === c.id
@@ -1789,7 +2128,9 @@ const Model = ({
               <p className="text-sm text-gray-700">Message</p>
               <textarea
                 value={reminderForm.message}
-                onChange={(e) => setReminderForm((f) => ({ ...f, message: e.target.value }))}
+                onChange={(e) =>
+                  setReminderForm((f) => ({ ...f, message: e.target.value }))
+                }
                 className="text-sm mt-2 w-full border border-gray-300 rounded-lg px-4 py-3 h-28 outline-none resize-none"
                 placeholder="Reminder message to the customer..."
               />
@@ -1831,7 +2172,9 @@ const Model = ({
                 <label className=" text-gray-700">Event Title *</label>
                 <input
                   value={eventForm.title}
-                  onChange={(e) => setEventForm((f) => ({ ...f, title: e.target.value }))}
+                  onChange={(e) =>
+                    setEventForm((f) => ({ ...f, title: e.target.value }))
+                  }
                   className="mt-1 w-full  border border-gray-300 rounded-lg px-4 py-2 outline-none"
                   placeholder="e.g., Client Meeting, Photo Shoot, Editing Session"
                 />
@@ -1840,7 +2183,9 @@ const Model = ({
                 <label className=" text-gray-700">Event Type *</label>
                 <select
                   value={eventForm.type}
-                  onChange={(e) => setEventForm((f) => ({ ...f, type: e.target.value }))}
+                  onChange={(e) =>
+                    setEventForm((f) => ({ ...f, type: e.target.value }))
+                  }
                   className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
                 >
                   <option>Booking / Shoot</option>
@@ -1859,7 +2204,9 @@ const Model = ({
                   <input
                     type="date"
                     value={eventForm.date}
-                    onChange={(e) => setEventForm((f) => ({ ...f, date: e.target.value }))}
+                    onChange={(e) =>
+                      setEventForm((f) => ({ ...f, date: e.target.value }))
+                    }
                     className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
                   />
                 </div>
@@ -1868,7 +2215,9 @@ const Model = ({
                   <input
                     type="time"
                     value={eventForm.startTime}
-                    onChange={(e) => setEventForm((f) => ({ ...f, startTime: e.target.value }))}
+                    onChange={(e) =>
+                      setEventForm((f) => ({ ...f, startTime: e.target.value }))
+                    }
                     className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
                   />
                 </div>
@@ -1877,7 +2226,9 @@ const Model = ({
                   <input
                     type="time"
                     value={eventForm.endTime}
-                    onChange={(e) => setEventForm((f) => ({ ...f, endTime: e.target.value }))}
+                    onChange={(e) =>
+                      setEventForm((f) => ({ ...f, endTime: e.target.value }))
+                    }
                     className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
                   />
                 </div>
@@ -1886,16 +2237,23 @@ const Model = ({
                 <label className=" text-gray-700">Location</label>
                 <input
                   value={eventForm.location}
-                  onChange={(e) => setEventForm((f) => ({ ...f, location: e.target.value }))}
+                  onChange={(e) =>
+                    setEventForm((f) => ({ ...f, location: e.target.value }))
+                  }
                   className="mt-1 w-full  border border-gray-300 rounded-lg px-4 py-2 outline-none"
                   placeholder="e.g.,  Studio, Client Address, Venue Name"
                 />
               </div>
               <div className="mt-4 text-sm">
-                <label className=" text-gray-700"> Link to Booking (Optional) </label>
+                <label className=" text-gray-700">
+                  {" "}
+                  Link to Booking (Optional){" "}
+                </label>
                 <select
                   value={eventForm.bookingId}
-                  onChange={(e) => setEventForm((f) => ({ ...f, bookingId: e.target.value }))}
+                  onChange={(e) =>
+                    setEventForm((f) => ({ ...f, bookingId: e.target.value }))
+                  }
                   className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
                 >
                   <option value="">No linked booking</option>
@@ -1927,7 +2285,9 @@ const Model = ({
               <p className=" text-gray-700">Additional Notes</p>
               <textarea
                 value={eventForm.notes}
-                onChange={(e) => setEventForm((f) => ({ ...f, notes: e.target.value }))}
+                onChange={(e) =>
+                  setEventForm((f) => ({ ...f, notes: e.target.value }))
+                }
                 className=" mt-2 w-full border border-gray-300 rounded-lg px-4 py-3 h-28 outline-none resize-none"
                 placeholder="Add any special requirements or notes..."
               />
@@ -1970,20 +2330,25 @@ const Model = ({
                 value={payBooking?.id || ""}
                 className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
                 onChange={(e) =>
-                  setPayBooking(paymentBookingOptions.find((x) => x.id === e.target.value))
+                  setPayBooking(
+                    paymentBookingOptions.find((x) => x.id === e.target.value),
+                  )
                 }
               >
                 <option value="">Choose a booking...</option>
                 {paymentBookingOptions.map((x) => (
                   <option key={x.id} value={x.id}>
-                    {x.id} – {x.client} – {x.event} (Balance: ₹{x.price - x.paid})
+                    {x.id} – {x.client} – {x.event} (Balance: ₹
+                    {x.price - x.paid})
                   </option>
                 ))}
               </select>
 
               {payBooking && (
                 <div className="mt-4 p-4 rounded-xl border border-gray-300  bg-purple-50">
-                  <h3 className="font-semibold text-gray-800 mb-2">Booking Details</h3>
+                  <h3 className="font-semibold text-gray-800 mb-2">
+                    Booking Details
+                  </h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-gray-600">Client:</p>{" "}
@@ -2013,7 +2378,9 @@ const Model = ({
               <input
                 type="number"
                 value={paymentForm.amount}
-                onChange={(e) => setPaymentForm((f) => ({ ...f, amount: e.target.value }))}
+                onChange={(e) =>
+                  setPaymentForm((f) => ({ ...f, amount: e.target.value }))
+                }
                 className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
                 placeholder="₹ 0.00"
               />
@@ -2024,7 +2391,9 @@ const Model = ({
               <input
                 type="date"
                 value={paymentForm.date}
-                onChange={(e) => setPaymentForm((f) => ({ ...f, date: e.target.value }))}
+                onChange={(e) =>
+                  setPaymentForm((f) => ({ ...f, date: e.target.value }))
+                }
                 className="mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
               />
             </div>
@@ -2052,10 +2421,14 @@ const Model = ({
             </div>
 
             <div>
-              <label className="text-sm text-gray-700">Reference / Transaction ID</label>
+              <label className="text-sm text-gray-700">
+                Reference / Transaction ID
+              </label>
               <input
                 value={paymentForm.reference}
-                onChange={(e) => setPaymentForm((f) => ({ ...f, reference: e.target.value }))}
+                onChange={(e) =>
+                  setPaymentForm((f) => ({ ...f, reference: e.target.value }))
+                }
                 className=" text-sm mt-1 w-full border border-gray-300 rounded-lg px-4 py-2 outline-none"
                 placeholder="e.g,, TXN123456, Check #789, etc."
               />
@@ -2065,7 +2438,9 @@ const Model = ({
               <p className="text-sm text-gray-700">Additional Notes</p>
               <textarea
                 value={paymentForm.note}
-                onChange={(e) => setPaymentForm((f) => ({ ...f, note: e.target.value }))}
+                onChange={(e) =>
+                  setPaymentForm((f) => ({ ...f, note: e.target.value }))
+                }
                 className="text-sm mt-2 w-full border border-gray-300 rounded-lg px-4 py-3 h-28 outline-none resize-none"
                 placeholder="Add any Additional notes about this payment..."
               />
@@ -2096,7 +2471,9 @@ const Model = ({
               <h2 className="text-lg font-semibold">Contact Message</h2>
               <h2 className="text-xs font-semibold text-gray-600">
                 {contact.name}
-                {contact.createdAt ? ` · ${new Date(contact.createdAt).toLocaleString("en-GB")}` : ""}
+                {contact.createdAt
+                  ? ` · ${new Date(contact.createdAt).toLocaleString("en-GB")}`
+                  : ""}
               </h2>
             </div>
             <button
@@ -2111,15 +2488,21 @@ const Model = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>
                 <label className="text-gray-700">Name</label>
-                <p className="mt-1 font-medium text-gray-800">{contact.name || "—"}</p>
+                <p className="mt-1 font-medium text-gray-800">
+                  {contact.name || "—"}
+                </p>
               </div>
               <div>
                 <label className="text-gray-700">Email</label>
-                <p className="mt-1 font-medium text-gray-800">{contact.email || "—"}</p>
+                <p className="mt-1 font-medium text-gray-800">
+                  {contact.email || "—"}
+                </p>
               </div>
               <div>
                 <label className="text-gray-700">Phone</label>
-                <p className="mt-1 font-medium text-gray-800">{contact.phone || "— not provided —"}</p>
+                <p className="mt-1 font-medium text-gray-800">
+                  {contact.phone || "— not provided —"}
+                </p>
               </div>
               <div>
                 <label className="text-gray-700">Event Type</label>

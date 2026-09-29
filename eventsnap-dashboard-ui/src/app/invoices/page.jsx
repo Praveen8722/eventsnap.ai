@@ -142,7 +142,7 @@ function Invoices() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Total Invoices
             <div className="w-12 h-12 bg-[#22C55E] rounded-xl flex items-center justify-center">
@@ -152,7 +152,7 @@ function Invoices() {
           <h2 className="text-xl font-bold mb-3">{totalInvoices}</h2>
         </Link>
 
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Paid
             <div className="w-12 h-12 rounded-xl bg-[#EF4444] flex items-center justify-center">
@@ -162,7 +162,7 @@ function Invoices() {
           <h2 className="text-xl font-bold mb-3">{paidCount}</h2>
         </Link>
 
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Pending
             <div className="w-12 h-12 rounded-xl bg-[#3A7BFF] flex items-center justify-center">
@@ -172,7 +172,7 @@ function Invoices() {
           <h2 className="text-xl font-bold mb-3">{pendingCount}</h2>
         </Link>
 
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Outstanding
             <div className="w-12 h-12 rounded-xl bg-[#5a52e0] flex items-center justify-center">
@@ -184,7 +184,7 @@ function Invoices() {
       </div>
 
       <div className="grid grid-cols-1  gap-6 mt-6 ">
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border-2 border-gray-200">
+        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border-2 border-gray-200 cursor-pointer dashboard-card">
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[600px]">
               <thead>

@@ -36,7 +36,7 @@ export function PortfolioSettings() {
         <p className="text-gray-500 text-sm mt-0.5">Configure your portfolio visibility and behavior</p>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+      <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm cursor-pointer dashboard-card">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-8 h-8 bg-[#EEF0FF] rounded-lg flex items-center justify-center"><Globe size={16} className="text-[#6C63FF]" /></div>
           <h3 className="font-semibold text-[#1E1E1E]">Visibility</h3>
@@ -46,7 +46,7 @@ export function PortfolioSettings() {
         <ToggleRow settings={settings} toggle={toggle} settingKey="passwordProtected" label="Password Protection" desc="Require a password to view your portfolio" />
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+      <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm cursor-pointer dashboard-card">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-8 h-8 bg-[#EEF0FF] rounded-lg flex items-center justify-center"><Settings size={16} className="text-[#6C63FF]" /></div>
           <h3 className="font-semibold text-[#1E1E1E]">Sections</h3>
@@ -56,7 +56,7 @@ export function PortfolioSettings() {
         <ToggleRow settings={settings} toggle={toggle} settingKey="showFAQ" label="Show FAQ" desc="Display the frequently asked questions section" />
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+      <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm cursor-pointer dashboard-card">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-8 h-8 bg-[#EEF0FF] rounded-lg flex items-center justify-center"><Palette size={16} className="text-[#6C63FF]" /></div>
           <h3 className="font-semibold text-[#1E1E1E]">Appearance</h3>
@@ -84,7 +84,7 @@ export function PortfolioSettings() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+      <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm cursor-pointer dashboard-card">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-8 h-8 bg-[#EEF0FF] rounded-lg flex items-center justify-center"><Bell size={16} className="text-[#6C63FF]" /></div>
           <h3 className="font-semibold text-[#1E1E1E]">Advanced</h3>

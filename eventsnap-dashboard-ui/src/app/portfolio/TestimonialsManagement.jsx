@@ -32,7 +32,7 @@ export function TestimonialsManagement() {
       </div>
       <div className="space-y-4">
         {testimonials.map((t, idx) => (
-          <div key={t.id} className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
+          <div key={t.id} className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm cursor-pointer dashboard-card">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6C63FF] to-[#FF675D] flex items-center justify-center text-white font-bold text-sm">

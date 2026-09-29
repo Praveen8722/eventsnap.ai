@@ -147,7 +147,7 @@ export default function ClientGalleriesPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
-        <div className="p-4 border-2 border-gray-200 rounded-xl">
+        <div className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Total Galleries
             <div className="w-12 h-12 bg-[#5a52e0] rounded-xl flex items-center justify-center">
@@ -157,7 +157,7 @@ export default function ClientGalleriesPage() {
           <h2 className="text-xl font-bold mb-3">{totalGalleries}</h2>
         </div>
 
-        <div className="p-4 border-2 border-gray-200 rounded-xl">
+        <div className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Total Photos
             <div className="w-12 h-12 rounded-xl bg-[#3A7BFF] flex items-center justify-center">
@@ -167,7 +167,7 @@ export default function ClientGalleriesPage() {
           <h2 className="text-xl font-bold mb-3">{totalPhotos}</h2>
         </div>
 
-        <div className="p-4 border-2 border-gray-200 rounded-xl">
+        <div className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Total Views
             <div className="w-12 h-12 rounded-xl bg-[#22C55E] flex items-center justify-center">
@@ -177,7 +177,7 @@ export default function ClientGalleriesPage() {
           <h2 className="text-xl font-bold mb-3">{totalViews}</h2>
         </div>
 
-        <div className="p-4 border-2 border-gray-200 rounded-xl">
+        <div className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Total Downloads
             <div className="w-12 h-12 rounded-xl bg-[#EF4444] flex items-center justify-center">
@@ -189,7 +189,7 @@ export default function ClientGalleriesPage() {
       </div>
 
       {!loading && galleries.length === 0 && (
-        <div className="mt-8 border-2 border-dashed border-gray-200 rounded-2xl py-16 flex flex-col items-center text-center">
+        <div className="mt-8 border-2 border-dashed border-gray-200 rounded-2xl py-16 flex flex-col items-center text-center cursor-pointer dashboard-card">
           <GoImage className="text-gray-300 text-5xl mb-3" />
           <p className="text-gray-600 font-medium">No galleries yet</p>
           <p className="text-gray-400 text-sm mt-1">
@@ -205,7 +205,7 @@ export default function ClientGalleriesPage() {
           return (
             <div
               key={item._id}
-              className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden"
+              className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden cursor-pointer dashboard-card"
             >
               <div className="relative">
                 <div className="h-72 w-full bg-linear-to-br from-purple-500 to-orange-400 flex items-center justify-center">

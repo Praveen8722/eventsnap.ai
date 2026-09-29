@@ -276,7 +276,7 @@ function BookingDetailsContent() {
 
       <div className="flex flex-col md:flex-row gap-6 mt-8 ">
         <div className="flex flex-col md:flex-[2] gap-6">
-          <div className=" border border-gray-300 rounded-2xl p-6 ">
+          <div className=" border border-gray-300 rounded-2xl p-6 cursor-pointer dashboard-card">
             <h3 className="font-semibold text-lg ">Client Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <div className="flex items-center gap-3">
@@ -318,7 +318,7 @@ function BookingDetailsContent() {
             </div>
           </div>
 
-          <div className=" border border-gray-300 rounded-2xl p-6 ">
+          <div className=" border border-gray-300 rounded-2xl p-6 cursor-pointer dashboard-card">
             <h3 className="font-semibold text-lg ">Event Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <div className="flex items-center gap-3">
@@ -340,6 +340,33 @@ function BookingDetailsContent() {
                 </div>
               </div>
             </div>
+            {/* Multi-day bookings: every event day of this one booking, by date. */}
+            {booking?.eventDays?.length > 0 && (
+              <div className="bg-gray-50 p-4 rounded-lg mt-4">
+                <h3 className="text-sm text-gray-600">Event Days</h3>
+                <div className="mt-2 space-y-3">
+                  {booking.eventDays.map((day, i) => (
+                    <div key={day._id || i} className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center shrink-0">
+                        <MdDateRange className="text-purple-400 text-2xl" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700">{day.name}</h4>
+                        <p className="text-sm text-gray-600">
+                          {new Date(day.date).toLocaleDateString("en-US", {
+                            month: "long",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                          {day.location ? ` · ${day.location}` : ""}
+                        </p>
+                        {day.notes && <p className="text-sm text-gray-500 mt-1">{day.notes}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-3 bg-gray-50 p-4 rounded-lg mt-4">
               <div>
                 <h3 className="text-sm text-gray-600">Additional Notes</h3>
@@ -348,7 +375,7 @@ function BookingDetailsContent() {
             </div>
           </div>
 
-          <div className="border border-gray-300 rounded-2xl p-6">
+          <div className="border border-gray-300 rounded-2xl p-6 cursor-pointer dashboard-card">
             <h3 className="font-semibold text-lg">Project Timeline</h3>
             <div className="mt-4 flex flex-col gap-8">
               {steps.map((step, i) => (
@@ -382,7 +409,7 @@ function BookingDetailsContent() {
             </div>
           </div>
 
-          <div className="border border-gray-300 rounded-2xl p-6">
+          <div className="border border-gray-300 rounded-2xl p-6 cursor-pointer dashboard-card">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-lg">Client Gallery</h3>
               {gallery && <span className="text-xs text-gray-500">{gallery.galleryId}</span>}
@@ -489,7 +516,7 @@ function BookingDetailsContent() {
         </div>
 
         <div className="w-full md:flex-[1] gap-col-6 space-y-6">
-          <div className="border border-gray-300 rounded-2xl p-6">
+          <div className="border border-gray-300 rounded-2xl p-6 cursor-pointer dashboard-card">
             <div className="mt-4 text-sm">
               <label className="text-lg font-semibold mb-6">Current Status</label>
               <select
@@ -506,7 +533,7 @@ function BookingDetailsContent() {
             </div>
           </div>
 
-          <div className="w-full bg-white p-6 rounded-2xl border border-gray-200 mt-8">
+          <div className="w-full bg-white p-6 rounded-2xl border border-gray-200 mt-8 cursor-pointer dashboard-card">
             <h2 className="text-lg font-semibold mb-6">Payment Summary</h2>
             <div className="flex justify-between items-center mb-4">
               <span className="text-gray-500">Package Price</span>

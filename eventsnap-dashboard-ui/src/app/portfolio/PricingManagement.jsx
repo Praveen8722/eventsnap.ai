@@ -29,7 +29,7 @@ export function PricingManagement() {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 @max-[700px]:grid-cols-1 gap-5">
         {packages.map(pkg => (
-          <div key={pkg.id} className={`bg-white rounded-xl border-2 p-5 shadow-sm relative ${pkg.popular ? 'border-[#6C63FF]' : 'border-gray-100'}`}>
+          <div key={pkg.id} className={`cursor-pointer dashboard-card bg-white rounded-xl border-2 p-5 shadow-sm relative ${pkg.popular ? 'border-[#6C63FF]' : 'border-gray-100'}`}>
             {pkg.popular && (
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#6C63FF] to-[#FF675D] text-white text-[10px] font-bold px-3 py-0.5 rounded-full">Most Popular</div>
             )}

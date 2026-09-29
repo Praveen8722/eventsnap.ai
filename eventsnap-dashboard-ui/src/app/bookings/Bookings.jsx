@@ -31,6 +31,21 @@ const TAB_STATUS_MATCHERS = {
 };
 const TAB_LABELS = ["All Bookings", "New Booking", "Pending", "Completed", "Cancelled"];
 const PAGE_SIZE = 10;
+
+// Stored event dates are ISO strings ("2026-09-30T00:00:00.000Z") — show just
+// the date, e.g. "Sep 30, 2026" (same style as the Dashboard). Formatted in
+// UTC so the saved calendar day never shifts with the viewer's timezone.
+const formatEventDate = (value) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+};
 // Status pill colours — one distinct colour per Booking status.
 const STATUS_BADGE = {
   Inquiry: "bg-gray-100 text-gray-600",
@@ -198,7 +213,7 @@ export function Bookings() {
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl p-4 py-8 flex flex-wrap gap-4 items-center mt-6">
+      <div className="bg-white border border-gray-200 rounded-xl p-4 py-8 flex flex-wrap gap-4 items-center mt-6 cursor-pointer dashboard-card">
         <div className="flex items-center flex-1 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2">
           <IoSearch className="text-gray-500 text-lg" />
           <input
@@ -242,7 +257,7 @@ export function Bookings() {
         ))}
       </div>
 
-      <div className="bg-white p-6 rounded-xl shadow-sm border-2 border-gray-200 mt-6 w-full overflow-x-auto">
+      <div className="bg-white p-6 rounded-xl shadow-sm border-2 border-gray-200 mt-6 w-full overflow-x-auto cursor-pointer dashboard-card">
         <table className="w-full text-sm min-w-[900px]">
           <thead>
             <tr className="text-gray-700 text-[15px]  flex-1 bg-gray-50">
@@ -267,7 +282,7 @@ export function Bookings() {
                   </div>
                 </td>
                 <td className="py-5 text-gray-700">{item.eventType}</td>
-                <td className="py-5 text-gray-700">{item.eventDate}</td>
+                <td className="py-5 text-gray-700">{formatEventDate(item.eventDate)}</td>
                 <td className="py-5 text-gray-700">{item.packageSelected}</td>
                 <td className="py-5 text-gray-700">₹{item.packegPrice}</td>
                 <td className="py-5">

@@ -1,6 +1,7 @@
 import Booking from "../models/Booking.js";
 import Portfolio from "../models/Portfolio.js";
 import { ensureGalleryForBooking } from "./galleryController.js";
+import { isValidPhoneNumber } from "../utils/phone.js";
 
 // Next "BK00N" id, based on the most recently created booking for this
 // photographer only. Booking ids are independent per owner, just like
@@ -15,6 +16,45 @@ const nextBookingId = async (userId) => {
     if (!Number.isNaN(num)) next = num + 1;
   }
   return `BK${next.toString().padStart(3, "0")}`;
+};
+
+// Validates and cleans the optional "Event Days" list (New / Edit Booking).
+// Returns { days } sorted by date, or { error } for a 400 response. Only
+// name, date, location and notes are kept; location and notes are optional.
+const MAX_EVENT_DAYS = 50;
+const normalizeEventDays = (raw) => {
+  if (raw === undefined || raw === null) return { days: [] };
+  if (!Array.isArray(raw)) return { error: "eventDays must be a list" };
+  if (raw.length > MAX_EVENT_DAYS) {
+    return { error: `A booking can have at most ${MAX_EVENT_DAYS} event days` };
+  }
+  const text = (v) => (typeof v === "string" ? v.trim() : "");
+  const days = [];
+  for (let i = 0; i < raw.length; i++) {
+    const d = raw[i] || {};
+    const name = text(d.name);
+    const date = new Date(d.date);
+    if (!name || !d.date || Number.isNaN(date.getTime())) {
+      return { error: `Event day ${i + 1}: event name and date are required` };
+    }
+    days.push({
+      name,
+      date,
+      location: text(d.location),
+      notes: text(d.notes),
+    });
+  }
+  days.sort((a, b) => a.date - b.date);
+  return { days };
+};
+
+// Optional money fields (package price / advance payment): empty or missing
+// means 0; anything else must be a number. Returns { value } or { error }.
+const optionalAmount = (raw, label) => {
+  if (raw === undefined || raw === null || String(raw).trim() === "") return { value: 0 };
+  const value = Number(raw);
+  if (Number.isNaN(value)) return { error: `${label} must be a number` };
+  return { value };
 };
 
 // ================= CREATE BOOKING =================
@@ -42,6 +82,29 @@ export const createBooking = async (req, res) => {
       additionalNotes,
       portfolioSlug,
     } = req.body;
+
+    // Same shared rule as the New Booking form: a 10-digit Indian mobile.
+    if (!isValidPhoneNumber(phone)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid phone number.",
+      });
+    }
+
+    const { days: eventDays, error: eventDaysError } = normalizeEventDays(
+      req.body.eventDays
+    );
+    if (eventDaysError) {
+      return res.status(400).json({ success: false, message: eventDaysError });
+    }
+
+    const price = optionalAmount(packegPrice, "packegPrice");
+    const advance = optionalAmount(advancePayment, "advancePayment");
+    if (price.error || advance.error) {
+      return res
+        .status(400)
+        .json({ success: false, message: price.error || advance.error });
+    }
 
     let ownerId = null;
     const slug = String(portfolioSlug || "").trim();
@@ -72,10 +135,12 @@ export const createBooking = async (req, res) => {
       email,
       phone,
       eventType,
-      eventDate,
+      // With event days, the booking's date is its earliest day.
+      eventDate: eventDays.length ? eventDays[0].date : eventDate,
+      eventDays,
       packageSelected,
-      packegPrice,
-      advancePayment,
+      packegPrice: price.value,
+      advancePayment: advance.value,
       additionalNotes,
       // Derived from the resolved path, never from the client's `source`.
       source: slug ? "portfolio" : "internal",
@@ -193,6 +258,17 @@ export const updateBooking = async (req, res) => {
       return res
         .status(400)
         .json({ success: false, message: "Invalid status value" });
+    }
+
+    // Edit Booking → Event Days: same rules as create. With days present the
+    // booking's date follows the earliest day; an empty list clears them.
+    if (req.body.eventDays !== undefined) {
+      const { days, error } = normalizeEventDays(req.body.eventDays);
+      if (error) {
+        return res.status(400).json({ success: false, message: error });
+      }
+      updates.eventDays = days;
+      if (days.length) updates.eventDate = days[0].date;
     }
 
     // Record a real status change in statusHistory (server-side only). A

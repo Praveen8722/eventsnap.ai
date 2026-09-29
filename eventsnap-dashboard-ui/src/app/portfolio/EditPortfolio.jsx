@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 import { usePortfolioDataStore } from "./portfolioStore";
 import { publicPortfolioPrefix, displayUrl } from "@/lib/portfolioQr";
+import { uploadPortfolioPhoto } from "@/api/portfolioApi";
+import { photoSrc } from "./portfolioPhoto";
 
 function useDebouncedSave(onSave, delay = 1800) {
   const timer = useRef(null);
@@ -73,7 +75,7 @@ function Section({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
+    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm cursor-pointer dashboard-card">
       <button
         className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
         onClick={() => setOpen((o) => !o)}
@@ -119,18 +121,69 @@ const TEXTAREA = `${INPUT} resize-none`;
 
 const MAX_PHOTO_BYTES = 20 * 1024 * 1024;
 
-function PhotoUploadCard({ src, label, onSelect }) {
-  const inputRef = useRef(null);
-  const isUrl = /^(data:|blob:|https?:)/.test(src || "");
+// Built-in photos a photographer can pick instead of uploading, for the
+// Profile Photo and the Navbar Photo (the first one is the seeded starter photo).
+const PRESET_PROFILE_PHOTOS = [
+  "photo-1554048612-b6a482bc67e5",
+  "photo-1542038784456-1ea8e935640e",
+  "photo-1520390138845-fd2d229dd553",
+  "photo-1516035069371-29a1b244cc32",
+  "photo-1471341971476-ae15ff5dd4ea",
+  "photo-1452587925148-ce544e77e70d",
+];
 
-  const handleFile = (e) => {
+// A picked preset is saved as its full image URL rather than the bare id, so
+// it's distinguishable from the seeded starter id. Saved ids from before this
+// still count as selected.
+const presetPhotoUrl = (id) => `https://images.unsplash.com/${id}?w=800&auto=format`;
+
+function PresetPhotoPicker({ presets, value, label, onSelect }) {
+  return (
+    <div className="grid grid-cols-6 @max-[560px]:grid-cols-3 gap-1.5 mt-2">
+      {presets.map((id, i) => {
+        const selected = value === id || value === presetPhotoUrl(id);
+        return (
+          <button
+            key={id}
+            type="button"
+            onClick={() => onSelect(presetPhotoUrl(id))}
+            aria-label={`Use preset ${label} ${i + 1}`}
+            aria-pressed={selected}
+            className={`aspect-square rounded-lg overflow-hidden border-2 transition-colors ${
+              selected
+                ? "border-[#6C63FF]"
+                : "border-transparent hover:border-[#6C63FF]/50"
+            }`}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={photoSrc(id, "w=120&h=120&fit=crop&auto=format")}
+              alt=""
+              className="w-full h-full object-cover"
+            />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function PhotoUploadCard({ src, label, kind, onSelect }) {
+  const inputRef = useRef(null);
+
+  // The file is stored on the server (a base64 data URL is too large for the
+  // portfolio save); only its saved "/uploads/..." url goes into the portfolio.
+  const handleFile = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || !file.type.startsWith("image/") || file.size > MAX_PHOTO_BYTES)
       return;
-    const reader = new FileReader();
-    reader.onload = () => onSelect?.(reader.result);
-    reader.readAsDataURL(file);
+    try {
+      const res = await uploadPortfolioPhoto(kind, file);
+      if (res.data?.url) onSelect?.(res.data.url);
+    } catch (err) {
+      alert(err?.response?.data?.message || `Failed to upload ${label}`);
+    }
   };
 
   return (
@@ -146,19 +199,25 @@ function PhotoUploadCard({ src, label, onSelect }) {
         onChange={handleFile}
         className="hidden"
       />
-      <img
-        src={
-          isUrl
-            ? src
-            : `https://images.unsplash.com/${src}?w=300&h=240&fit=crop&auto=format`
-        }
-        className="w-full h-full object-cover"
-        alt={label}
-      />
-      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
-        <Camera size={20} className="text-white" />
-        <span className="text-white text-xs">Change {label}</span>
-      </div>
+      {src ? (
+        <>
+          <img
+            src={photoSrc(src, "w=300&h=240&fit=crop&auto=format")}
+            className="w-full h-full object-cover"
+            alt={label}
+          />
+          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
+            <Camera size={20} className="text-white" />
+            <span className="text-white text-xs">Change {label}</span>
+          </div>
+        </>
+      ) : (
+        // Nothing chosen yet (only the optional Navbar Photo starts empty).
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-gray-400 group-hover:text-[#6C63FF] transition-colors">
+          <Camera size={20} />
+          <span className="text-xs">Upload {label}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -401,7 +460,14 @@ export function EditPortfolio() {
             <PhotoUploadCard
               src={data.profilePhoto}
               label="Profile Photo"
+              kind="profile"
               onSelect={(url) => update("profilePhoto", url)}
+            />
+            <PresetPhotoPicker
+              presets={PRESET_PROFILE_PHOTOS}
+              value={data.profilePhoto}
+              label="Profile Photo"
+              onSelect={(id) => update("profilePhoto", id)}
             />
             <p className="text-xs text-gray-400 mt-1">
               Square image, at least 400×400px
@@ -411,10 +477,40 @@ export function EditPortfolio() {
             <PhotoUploadCard
               src={data.coverImage}
               label="Cover Image"
+              kind="cover"
               onSelect={(url) => update("coverImage", url)}
             />
             <p className="text-xs text-gray-400 mt-1">
               Landscape, at least 1200×800px
+            </p>
+          </Field>
+          <Field label="Navbar Photo">
+            <PhotoUploadCard
+              src={data.navbarPhoto}
+              label="Navbar Photo"
+              kind="navbar"
+              onSelect={(url) => update("navbarPhoto", url)}
+            />
+            <PresetPhotoPicker
+              presets={PRESET_PROFILE_PHOTOS}
+              value={data.navbarPhoto}
+              label="Navbar Photo"
+              onSelect={(id) => update("navbarPhoto", id)}
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Small avatar in your portfolio&apos;s top bar. Leave empty to show your initials.
+              {data.navbarPhoto && (
+                <>
+                  {" "}
+                  <button
+                    type="button"
+                    onClick={() => update("navbarPhoto", "")}
+                    className="text-[#6C63FF] hover:underline"
+                  >
+                    Use initials
+                  </button>
+                </>
+              )}
             </p>
           </Field>
         </div>
@@ -491,7 +587,7 @@ export function EditPortfolio() {
           {data.services.map((svc, idx) => (
             <div
               key={svc.id}
-              className="border border-gray-100 rounded-xl p-4 bg-gray-50 relative group"
+              className="border border-gray-100 rounded-xl p-4 bg-gray-50 relative group cursor-pointer dashboard-card"
             >
               <button
                 onClick={() => removeService(svc.id)}
@@ -568,7 +664,7 @@ export function EditPortfolio() {
           {data.pricing.map((pkg, idx) => (
             <div
               key={pkg.id}
-              className="border border-gray-100 rounded-xl p-4 bg-gray-50 relative group"
+              className="border border-gray-100 rounded-xl p-4 bg-gray-50 relative group cursor-pointer dashboard-card"
             >
               <button
                 onClick={() => removePricing(pkg.id)}
@@ -676,7 +772,7 @@ export function EditPortfolio() {
           {data.testimonials.map((t, idx) => (
             <div
               key={t.id}
-              className="border border-gray-100 rounded-xl p-4 bg-gray-50 relative group"
+              className="border border-gray-100 rounded-xl p-4 bg-gray-50 relative group cursor-pointer dashboard-card"
             >
               <button
                 onClick={() => removeTestimonial(t.id)}
@@ -773,7 +869,7 @@ export function EditPortfolio() {
           {data.faqs.map((faq, idx) => (
             <div
               key={faq.id}
-              className="border border-gray-100 rounded-xl p-4 bg-gray-50 relative group"
+              className="border border-gray-100 rounded-xl p-4 bg-gray-50 relative group cursor-pointer dashboard-card"
             >
               <button
                 onClick={() => removeFAQ(faq.id)}

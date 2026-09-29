@@ -7,6 +7,7 @@ import {
   ChevronRight, Zap
 } from 'lucide-react';
 import { usePortfolioData } from './portfolioStore';
+import { photoSrc } from './portfolioPhoto';
 import { PortfolioQrCode } from './PortfolioQrCode';
 import { publicPortfolioUrl, displayUrl, downloadQr, shareQrLink } from '@/lib/portfolioQr';
 
@@ -18,6 +19,8 @@ export function PortfolioOverview({ onNavigate }) {
   const qrUrl = publicPortfolioUrl(portfolio.slug);
   // Same URL for the Public Portfolio card (shown without "https://").
   const publicUrl = displayUrl(qrUrl);
+  // Saved photo URLs (uploads) are used as-is; only seeded Unsplash ids get the host prefix.
+  const coverSrc = photoSrc(portfolio.coverImage, 'w=600&h=220&fit=crop&auto=format');
 
   // Completion is derived from what the portfolio actually contains.
   const completionItems = [
@@ -67,7 +70,7 @@ export function PortfolioOverview({ onNavigate }) {
       {/* Top row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Portfolio Status */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm cursor-pointer dashboard-card">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-[#EEF0FF] rounded-lg flex items-center justify-center">
@@ -108,7 +111,7 @@ export function PortfolioOverview({ onNavigate }) {
         </div>
 
         {/* Public Portfolio */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm cursor-pointer dashboard-card">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-8 h-8 bg-[#EEF0FF] rounded-lg flex items-center justify-center">
               <Globe size={16} className="text-[#6C63FF]" />
@@ -118,11 +121,11 @@ export function PortfolioOverview({ onNavigate }) {
 
           <div
             className="rounded-xl overflow-hidden mb-4 relative"
-            style={{ height: 110, background: `url(https://images.unsplash.com/${portfolio.coverImage}?w=600&h=220&fit=crop&auto=format) center/cover` }}
+            style={{ height: 110, background: coverSrc ? `url("${coverSrc}") center/cover` : undefined }}
           >
             <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-1">
               <img
-                src={`https://images.unsplash.com/${portfolio.profilePhoto}?w=48&h=48&fit=crop&auto=format`}
+                src={photoSrc(portfolio.profilePhoto, 'w=48&h=48&fit=crop&auto=format')}
                 className="w-10 h-10 rounded-full border-2 border-white object-cover"
                 alt={portfolio.name}
               />
@@ -169,7 +172,7 @@ export function PortfolioOverview({ onNavigate }) {
         </div>
 
         {/* QR Code */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm cursor-pointer dashboard-card">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-8 h-8 bg-[#FFF0EF] rounded-lg flex items-center justify-center">
               <QrCode size={16} className="text-[#FF675D]" />
@@ -181,7 +184,7 @@ export function PortfolioOverview({ onNavigate }) {
 
           {/* Real QR code for this photographer's own public portfolio */}
           <div className="flex justify-center mb-4">
-            <div className="p-3 bg-white border-2 border-gray-200 rounded-xl inline-block">
+            <div className="p-3 bg-white border-2 border-gray-200 rounded-xl inline-block cursor-pointer dashboard-card">
               <PortfolioQrCode url={qrUrl} size={120} />
             </div>
           </div>

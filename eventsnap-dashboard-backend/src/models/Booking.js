@@ -20,7 +20,7 @@ const bookingSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      required: true,
+      required: false,
     },
     phone: {
       type: String,
@@ -38,9 +38,11 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    // Optional — an empty price is saved as 0 (see bookingController).
     packegPrice: {
       type: Number,
-      required: true,
+      required: false,
+      default: 0,
     },
     advancePayment: {
       type: Number,
@@ -50,6 +52,22 @@ const bookingSchema = new mongoose.Schema(
     additionalNotes: {
       type: String,
       required: false,
+    },
+    // Optional multi-day schedule for this one booking (e.g. Pooja, Pre-wedding,
+    // Wedding on separate, non-consecutive dates). Name and date are required
+    // per day; location and notes are optional. When present, eventDate is the
+    // earliest day's date (set in bookingController create/update). Each day
+    // is shown separately in Scheduling — it never creates extra bookings.
+    eventDays: {
+      type: [
+        {
+          name: { type: String, required: true, trim: true },
+          date: { type: Date, required: true },
+          location: { type: String, default: "" },
+          notes: { type: String, default: "" },
+        },
+      ],
+      default: [],
     },
     // Where the booking came from — set server-side only (see
     // bookingController.createBooking). "portfolio" bookings get the single

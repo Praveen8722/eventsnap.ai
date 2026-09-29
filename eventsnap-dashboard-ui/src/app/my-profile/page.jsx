@@ -210,7 +210,7 @@ const MyProfile = () => {
       </div>
 
       <div className="flex flex-col md:flex-row gap-6 mt-8">
-        <div className="w-full md:flex-2 border border-gray-300 rounded-2xl p-6">
+        <div className="w-full md:flex-2 border border-gray-300 rounded-2xl p-6 cursor-pointer dashboard-card">
           <div className="flex items-center text-center border-b border-gray-300 pb-4">
             <div className="relative">
               {profile.profilePhoto ? (
@@ -390,7 +390,7 @@ const MyProfile = () => {
         </div>
 
         <div className="w-full md:flex-1 gap-col-6 space-y-6">
-          <div className="border border-gray-300 rounded-2xl p-6">
+          <div className="border border-gray-300 rounded-2xl p-6 cursor-pointer dashboard-card">
             <h2 className="text-lg font-semibold mb-5">Payment Settings</h2>
             <div className="space-y-4">
               <div>
@@ -439,7 +439,7 @@ const MyProfile = () => {
             </button>
           </div>
 
-          <div className=" shadow  border border-gray-300 rounded-2xl p-6 ">
+          <div className=" shadow  border border-gray-300 rounded-2xl p-6 cursor-pointer dashboard-card">
             <h2 className="text-lg font-semibold mb-5">Notification Settings</h2>
             <div className="space-y-4 text-sm font-semibold text-gray-600">
               <div className="flex justify-between">
@@ -490,7 +490,7 @@ const MyProfile = () => {
             </div>
           </div>
 
-          <div className="bg-linear-to-r from-[#6C63FF] to-[#5147FF] text-white p-8 rounded-2xl shadow ">
+          <div className="bg-linear-to-r from-[#6C63FF] to-[#5147FF] text-white p-8 rounded-2xl shadow cursor-pointer dashboard-card">
             <h2 className="text-xl font-semibold mb-2">Upgrade to Pro</h2>
             <p className="text-sm opacity-90">Get unlimited bookings, advanced analytics, and priority support</p>
             <button className="mt-6 w-full bg-white text-[#6C63FF] py-2 rounded-lg font-medium hover:bg-gray-100">
@@ -500,10 +500,10 @@ const MyProfile = () => {
         </div>
       </div>
 
-      <div className="w-full bg-white p-6 rounded-2xl border border-gray-200 mt-8">
+      <div className="w-full bg-white p-6 rounded-2xl border border-gray-200 mt-8 cursor-pointer dashboard-card">
         <h2 className="text-xl font-semibold mb-6">Subscription & Billing</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-5 rounded-2xl border border-gray-200">
+          <div className="bg-white p-5 rounded-2xl border border-gray-200 cursor-pointer dashboard-card">
             <div className="flex justify-between items-center mb-4">
               <span className="text-gray-500">Plan</span>
               <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-medium">Free</span>
@@ -521,7 +521,7 @@ const MyProfile = () => {
             </div>
           </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-gray-200">
+          <div className="bg-white p-5 rounded-2xl border border-gray-200 cursor-pointer dashboard-card">
             <div className="flex justify-between items-center mb-4">
               <span className="text-gray-500">Plan</span>
               <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium">Pro</span>
@@ -539,7 +539,7 @@ const MyProfile = () => {
             </div>
           </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-gray-200">
+          <div className="bg-white p-5 rounded-2xl border border-gray-200 cursor-pointer dashboard-card">
             <div className="flex justify-between items-center mb-4">
               <span className="text-gray-500">Plan</span>
               <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">Business</span>

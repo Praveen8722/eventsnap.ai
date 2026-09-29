@@ -38,7 +38,7 @@ export function PortfolioLink() {
         <p className="text-gray-500 text-sm mt-0.5">Share your portfolio URL with potential clients</p>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm space-y-4">
+      <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm space-y-4 cursor-pointer dashboard-card">
         {LINKS.map(link => (
           <div key={link.key}>
             <label className="text-xs font-medium text-gray-600 uppercase tracking-wide block mb-1.5">{link.label}</label>
@@ -60,7 +60,7 @@ export function PortfolioLink() {
         ))}
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+      <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm cursor-pointer dashboard-card">
         <h3 className="font-semibold text-[#1E1E1E] mb-4">Share on Social Media</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {SHARE.map(s => (
@@ -76,7 +76,7 @@ export function PortfolioLink() {
       </div>
 
       {/* Custom domain banner */}
-      <div className="bg-gradient-to-r from-[#6C63FF]/10 to-[#FF675D]/10 rounded-xl border border-[#6C63FF]/20 p-5 flex flex-wrap items-center gap-4">
+      <div className="bg-gradient-to-r from-[#6C63FF]/10 to-[#FF675D]/10 rounded-xl border border-[#6C63FF]/20 p-5 flex flex-wrap items-center gap-4 cursor-pointer dashboard-card">
         <div className="w-10 h-10 bg-[#6C63FF] rounded-xl flex items-center justify-center flex-shrink-0">
           <Globe size={20} className="text-white" />
         </div>

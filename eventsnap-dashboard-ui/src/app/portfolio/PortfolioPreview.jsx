@@ -23,13 +23,15 @@ import {
   CheckCircle,
 } from "lucide-react";
 import dynamic from "next/dynamic";
+import { Poppins } from "next/font/google";
 import { usePortfolioData } from "./portfolioStore";
-import { DEFAULT_PORTFOLIO } from "./portfolioData";
+import { photoSrc } from "./portfolioPhoto";
 import { publicPortfolioUrl, displayUrl } from "@/lib/portfolioQr";
 import { viewBookings } from "@/api/bookingApi";
 import { portfolioAssetUrl } from "@/api/portfolioApi";
 import { submitInquiry } from "@/api/inquiryApi";
 import { whatsAppLink } from "@/lib/whatsapp";
+import { isValidPhoneNumber } from "@/lib/phone";
 import { FaWhatsapp } from "react-icons/fa";
 
 // Shared booking modal — loaded on demand, same as the Bookings/Dashboard pages.
@@ -437,12 +439,12 @@ function PublicNav({ isMobile }) {
             cursor: "pointer",
           }}
         >
-          {/* This portfolio owner's own profile photo, else their initials.
-              The seeded starter photo is a stock placeholder, not the owner. */}
-          {p.profilePhoto && p.profilePhoto !== DEFAULT_PORTFOLIO.profilePhoto ? (
+          {/* The navbar's own photo (Edit Portfolio → Navbar Photo, separate
+              from the About profile photo), else the owner's initials. */}
+          {p.navbarPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={photoSrc(p.profilePhoto, "w=72&h=72&fit=crop&auto=format")}
+              src={photoSrc(p.navbarPhoto, "w=72&h=72&fit=crop&auto=format")}
               alt=""
               style={{ width: 36, height: 36, borderRadius: 10, objectFit: "cover", flexShrink: 0 }}
             />
@@ -827,12 +829,13 @@ function PublicAbout({ isMobile }) {
               }}
             >
               <img
-                src={photoSrc(p.profilePhoto, "w=600&h=700&fit=crop&auto=format")}
+                src={photoSrc(p.profilePhoto, "w=600&h=750&fit=crop&auto=format")}
                 alt={p.name}
                 style={{
+                  display: "block",
                   width: "100%",
                   borderRadius: 20,
-                  objectFit: "contain",
+                  objectFit: "cover",
                   objectPosition: "center",
                   background: t.sCardAlt,
                   aspectRatio: "4/5",
@@ -1069,15 +1072,6 @@ const galleryImageSrc = (img, params) => {
   if (img.isLocal) return img.url;
   if (img.url.startsWith("/uploads/")) return portfolioAssetUrl(img.url);
   return `https://images.unsplash.com/${img.url}?${params}`;
-};
-
-// Profile photo / cover image hold either a seeded Unsplash id or a full
-// data URL uploaded from a device. Returns undefined when nothing is set.
-const photoSrc = (v, params) => {
-  if (!v) return undefined;
-  return /^(data:|blob:|https?:)/.test(v)
-    ? v
-    : `https://images.unsplash.com/${v}?${params}`;
 };
 
 function PublicGallery({ isMobile }) {
@@ -1603,6 +1597,11 @@ function PublicContact({ isMobile }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (sending) return;
+    // Phone is required and must be a real number; email is optional.
+    if (!isValidPhoneNumber(form.phone)) {
+      setError("Please enter a valid phone number.");
+      return;
+    }
     setSending(true);
     setError("");
     try {
@@ -1874,7 +1873,6 @@ function PublicContact({ isMobile }) {
                     onChange={(e) =>
                       setForm((f) => ({ ...f, email: e.target.value }))
                     }
-                    required
                   />
                 </div>
                 <div
@@ -1891,6 +1889,7 @@ function PublicContact({ isMobile }) {
                     onChange={(e) =>
                       setForm((f) => ({ ...f, phone: e.target.value }))
                     }
+                    required
                   />
                   <select
                     style={{
@@ -2117,6 +2116,11 @@ export function PublicPortfolio({ isMobile }) {
 
 // ─── Preview Wrapper ───────────────────────────────────────────────────────────
 
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
+
 export function PortfolioPreview() {
   const livePortfolio = usePortfolioData();
   const [device, setDevice] = useState("desktop");
@@ -2139,10 +2143,18 @@ export function PortfolioPreview() {
   const narrowFrame = frameWidth !== null && frameWidth < 640;
 
   // Same live URL the QR code encodes (shown without "https://").
-  const publicUrl = displayUrl(publicPortfolioUrl(livePortfolio.slug));
+  const liveUrl = publicPortfolioUrl(livePortfolio.slug);
+  const publicUrl = displayUrl(liveUrl);
 
   return (
-    <div className="space-y-4">
+    <div className={`pv-poppins space-y-4 ${poppins.className}`}>
+      {/* Poppins for every piece of text in the preview — overrides the inline
+          font stacks (and font-mono) set further down the tree. */}
+      <style>{`
+        .pv-poppins, .pv-poppins * {
+          font-family: ${poppins.style.fontFamily} !important;
+        }
+      `}</style>
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -2153,14 +2165,18 @@ export function PortfolioPreview() {
             See exactly how your public portfolio looks to clients
           </p>
         </div>
-        <button className="flex items-center gap-2 border border-[#6C63FF] text-[#6C63FF] px-4 py-2 rounded-lg text-sm hover:bg-[#EEF0FF] transition-colors">
+        <button
+          type="button"
+          onClick={() => liveUrl && window.open(liveUrl, "_blank", "noopener,noreferrer")}
+          className="flex items-center gap-2 border border-[#6C63FF] text-[#6C63FF] px-4 py-2 rounded-lg text-sm hover:bg-[#EEF0FF] transition-colors"
+        >
           <ExternalLink size={14} />
           Open Public Portfolio
         </button>
       </div>
 
       {/* Toolbar */}
-      <div className="bg-white border border-gray-100 rounded-xl p-3 flex flex-wrap items-center gap-4 shadow-sm">
+      <div className="bg-white border border-gray-100 rounded-xl p-3 flex flex-wrap items-center gap-4 shadow-sm cursor-pointer dashboard-card">
         {/* Device toggle */}
         <div className="flex items-center bg-gray-100 rounded-lg p-1 gap-1">
           {Object.entries(DEVICE_CONFIG).map(([mode, cfg]) => {

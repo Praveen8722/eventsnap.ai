@@ -46,7 +46,7 @@ export function ContactInformation() {
         <h2 className="text-2xl font-bold text-[#1E1E1E]">Contact Information</h2>
         <p className="text-gray-500 text-sm mt-0.5">Update the contact details shown on your portfolio</p>
       </div>
-      <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm space-y-5">
+      <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm space-y-5 cursor-pointer dashboard-card">
         <h3 className="font-semibold text-[#1E1E1E]">Contact Details</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 @max-[560px]:grid-cols-1 gap-4">
           {[
@@ -62,7 +62,7 @@ export function ContactInformation() {
           ))}
         </div>
       </div>
-      <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm space-y-5">
+      <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm space-y-5 cursor-pointer dashboard-card">
         <h3 className="font-semibold text-[#1E1E1E]">Social Media</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 @max-[560px]:grid-cols-1 gap-4">
           {[

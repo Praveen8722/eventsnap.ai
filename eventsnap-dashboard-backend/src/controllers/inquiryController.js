@@ -3,6 +3,7 @@ import Portfolio from "../models/Portfolio.js";
 import User from "../models/User.js";
 import { sendInquiryEmail } from "../services/emailservice.js";
 import { whatsAppLink } from "../utils/whatsapp.js";
+import { isValidPhoneNumber } from "../utils/phone.js";
 
 // ================= SUBMIT INQUIRY (Public Portfolio Contact form) =================
 // Hit by the anonymous "Contact" / "Send Inquiry" form on a photographer's
@@ -14,7 +15,8 @@ export const submitInquiry = async (req, res) => {
     const { slug } = req.params;
     const { name, email, phone, eventType, message } = req.body;
 
-    const requiredFields = { name, email };
+    // Email is optional; phone is required (and validated below).
+    const requiredFields = { name, phone };
     const missingFields = Object.keys(requiredFields).filter((key) => {
       const value = requiredFields[key];
       return (
@@ -25,6 +27,12 @@ export const submitInquiry = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: `Missing required field(s): ${missingFields.join(", ")}`,
+      });
+    }
+    if (!isValidPhoneNumber(phone)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid phone number.",
       });
     }
 
@@ -41,8 +49,8 @@ export const submitInquiry = async (req, res) => {
     const inquiry = await Inquiry.create({
       user: portfolio.user,
       name,
-      email,
-      phone: phone || "",
+      email: email ? String(email).trim() : "",
+      phone: String(phone).trim(),
       eventType: eventType || "",
       message: message || "",
     });
@@ -71,7 +79,7 @@ export const submitInquiry = async (req, res) => {
       [
         `Hi ${owner?.businessName || owner?.name || ""}, I just sent an enquiry from your EventSnap portfolio:`,
         `Name: ${inquiry.name}`,
-        `Email: ${inquiry.email}`,
+        inquiry.email && `Email: ${inquiry.email}`,
         inquiry.phone && `Phone: ${inquiry.phone}`,
         inquiry.eventType && `Event Type: ${inquiry.eventType}`,
         inquiry.message && `Message: ${inquiry.message}`,

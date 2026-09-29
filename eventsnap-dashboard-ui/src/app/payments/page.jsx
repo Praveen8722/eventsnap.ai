@@ -432,7 +432,7 @@ export default function PaymentsPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Total Received
             <div className="w-12 h-12 bg-[#22C55E] rounded-xl flex items-center justify-center">
@@ -444,7 +444,7 @@ export default function PaymentsPage() {
             {totalReceivedTrend.text}
           </p>
         </Link>
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Pending Payments
             <div className="w-12 h-12 rounded-xl bg-[#EF4444] flex items-center justify-center">
@@ -454,7 +454,7 @@ export default function PaymentsPage() {
           <h2 className="text-xl font-bold mb-3">{fmt(pendingPayments)}</h2>
           <p className="text-sm bg-yellow-100 text-yellow-700 rounded-lg inline-block py-1 px-2.5">Pending</p>
         </Link>
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Collected This Month
             <div className="w-12 h-12 rounded-xl bg-[#3A7BFF] flex items-center justify-center">
@@ -464,7 +464,7 @@ export default function PaymentsPage() {
           <h2 className="text-xl font-bold mb-3">{fmt(collectedThisMonth)}</h2>
           <p className="text-sm bg-blue-100 text-blue-700 rounded-lg inline-block py-1 px-2.5">{monthLabel}</p>
         </Link>
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Advance Payments
             <div className="w-12 h-12 rounded-xl bg-[#5a52e0] flex items-center justify-center">
@@ -476,7 +476,7 @@ export default function PaymentsPage() {
         </Link>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl p-4 py-8 flex flex-wrap gap-4 items-center mt-6">
+      <div className="bg-white border border-gray-200 rounded-xl p-4 py-8 flex flex-wrap gap-4 items-center mt-6 cursor-pointer dashboard-card">
         <div className="flex items-center flex-1 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2">
           <IoSearch className="text-gray-500 text-lg" />
           <input
@@ -507,7 +507,7 @@ export default function PaymentsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6 ">
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border-2 border-gray-200">
+        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border-2 border-gray-200 cursor-pointer dashboard-card">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-800">Payment History</h2>
           </div>
@@ -618,7 +618,7 @@ export default function PaymentsPage() {
             </div>
           )}
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border-2 border-gray-200">
+        <div className="bg-white p-6 rounded-xl shadow-sm border-2 border-gray-200 cursor-pointer dashboard-card">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Pending Invoices</h2>
           <div className="flex flex-col gap-4">
             {pendingInvoices.length === 0 && <p className="text-sm text-gray-400">No pending invoices</p>}

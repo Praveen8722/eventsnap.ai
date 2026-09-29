@@ -207,7 +207,7 @@ export default function NotificationsPage() {
       </div>
 
       <div className="mt-6">
-        <div className="flex gap-3 mb-6 p-4 py-6 border border-gray-300 rounded-xl ">
+        <div className="flex gap-3 mb-6 p-4 py-6 border border-gray-300 rounded-xl cursor-pointer dashboard-card">
           {tabs.map((tab) => (
             <button
               key={tab}
@@ -230,7 +230,7 @@ export default function NotificationsPage() {
             return (
               <div
                 key={notification.id}
-                className="flex items-start justify-between p-4 py-6 border border-gray-300 rounded-xl hover:shadow-md transition-shadow bg-white"
+                className="flex items-start justify-between p-4 py-6 border border-gray-300 rounded-xl hover:shadow-md transition-shadow bg-white cursor-pointer dashboard-card"
               >
                 <div className="flex items-start gap-3 pb-4">
                   <div className="mt-1 ">{ICONS[notification.tone]}</div>

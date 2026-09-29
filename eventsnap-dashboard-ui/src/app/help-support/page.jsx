@@ -150,7 +150,7 @@ export default function HelpSupportPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Payments Guide
             <div className="w-12 h-12 bg-[#22C55E] rounded-xl flex items-center justify-center">
@@ -161,7 +161,7 @@ export default function HelpSupportPage() {
             Learn about payment features and tracking
           </p>
         </Link>
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Subscription Guide
             <div className="w-12 h-12 rounded-xl bg-[#5a52e0] flex items-center justify-center">
@@ -172,7 +172,7 @@ export default function HelpSupportPage() {
             Understand pricing and billing
           </p>
         </Link>
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Gallery Management
             <div className="w-12 h-12 rounded-xl bg-[#3A7BFF] flex items-center justify-center">
@@ -183,7 +183,7 @@ export default function HelpSupportPage() {
             Upload and share client photos
           </p>
         </Link>
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Booking System
             <div className="w-12 h-12 rounded-xl bg-[#FF675D] flex items-center justify-center">
@@ -197,7 +197,7 @@ export default function HelpSupportPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Live Chat
             <div className="w-12 h-12 bg-[#3A7BFF] rounded-xl flex items-center justify-center">
@@ -214,7 +214,7 @@ export default function HelpSupportPage() {
             Start Chat
           </button>
         </Link>
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Email Support
             <div className="w-12 h-12 rounded-xl bg-[#22C55E] flex items-center justify-center">
@@ -231,7 +231,7 @@ export default function HelpSupportPage() {
             Send Email
           </button>
         </Link>
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Phone Support
             <div className="w-12 h-12 rounded-xl bg-[#6C63FF] flex items-center justify-center">
@@ -262,7 +262,7 @@ export default function HelpSupportPage() {
         {tutorials.map((item, index) => (
           <div
             key={index}
-            className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden"
+            className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden cursor-pointer dashboard-card"
           >
             <div className="relative">
               <div className="h-70 w-full bg-[#6C63FF] flex items-center justify-center">

@@ -31,7 +31,7 @@ export function ServicesManagement() {
       </div>
       <div className="space-y-4">
         {services.map((svc, idx) => (
-          <div key={svc.id} className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm group">
+          <div key={svc.id} className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm group cursor-pointer dashboard-card">
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm font-semibold text-gray-500">Service {idx + 1}</span>
               <button onClick={() => removeService(svc.id)} className="text-gray-300 hover:text-red-400 transition-colors">

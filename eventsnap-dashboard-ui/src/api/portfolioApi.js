@@ -22,6 +22,16 @@ export const addPortfolioGalleryPhotos = (formData) =>
     headers: { "Content-Type": "multipart/form-data" },
   });
 
+// Upload the profile ("profile") or cover ("cover") photo. Stored on the
+// server; the response carries its saved "/uploads/portfolio/..." url.
+export const uploadPortfolioPhoto = (kind, file) => {
+  const formData = new FormData();
+  formData.append("photo", file);
+  return api.post(`${BASE}/me/photo/${encodeURIComponent(kind)}`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};
+
 // Delete one Portfolio → Gallery tab photo by its item id.
 export const deletePortfolioGalleryPhoto = (photoId) =>
   api.delete(`${BASE}/me/gallery/${encodeURIComponent(photoId)}`);

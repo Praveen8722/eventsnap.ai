@@ -159,7 +159,7 @@ export default function ProjectWorkflowPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Active Projectss
             <div className="w-12 h-12 bg-[#3A7BFF] rounded-xl flex items-center justify-center">
@@ -168,7 +168,7 @@ export default function ProjectWorkflowPage() {
           </h5>
           <h2 className="text-xl font-bold mb-3">{activeProjects}</h2>
         </Link>
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             In Editing
             <div className="w-12 h-12 rounded-xl bg-[#FF6A00] flex items-center justify-center">
@@ -177,7 +177,7 @@ export default function ProjectWorkflowPage() {
           </h5>
           <h2 className="text-xl font-bold mb-3">{inEditing}</h2>
         </Link>
-        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl">
+        <Link href="#" className="p-4 border-2 border-gray-200 rounded-xl cursor-pointer dashboard-card">
           <h5 className="flex justify-between font-semibold text-gray-700">
             Delivered This Month
             <div className="w-12 h-12 rounded-xl bg-[#22C55E] flex items-center justify-center">
@@ -191,7 +191,7 @@ export default function ProjectWorkflowPage() {
       <div className="py-8  overflow-x-hidden">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-6 items-start">
           {columns.map((col, i) => (
-            <div key={i} className={`border rounded-xl shadow-sm ${col.color}`}>
+            <div key={i} className={`cursor-pointer dashboard-card border rounded-xl shadow-sm ${col.color}`}>
               <div className={`${col.headerColor} px-4 py-2 border-b flex justify-between items-center rounded-t-xl`}>
                 <h3 className="text-white">{col.title}</h3>
                 <span className="bg-white text-gray-500 px-2.5 py-0.5 rounded-lg text-sm border">{col.count}</span>
@@ -201,7 +201,7 @@ export default function ProjectWorkflowPage() {
                   <Link
                     key={b.code || idx}
                     href={`/bookingdetails?id=${b.code}`}
-                    className="block bg-white p-4 rounded-xl border shadow-sm border-gray-200"
+                    className="block bg-white p-4 rounded-xl border shadow-sm border-gray-200 cursor-pointer dashboard-card"
                   >
                     <div className="flex justify-between">
                       <div>

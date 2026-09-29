@@ -46,6 +46,7 @@ const BLANK_SHAPE = {
   experience: "",
   profilePhoto: "",
   coverImage: "",
+  navbarPhoto: "",
   social: { instagram: "", facebook: "", youtube: "", whatsapp: "" },
   services: [],
   gallery: [],

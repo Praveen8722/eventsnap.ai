@@ -5,8 +5,12 @@ import {
   getPublicPortfolio,
   addPortfolioGalleryPhotos,
   deletePortfolioGalleryPhoto,
+  uploadPortfolioPhoto,
 } from "../controllers/portfolioController.js";
-import { uploadPortfolioPhotos } from "../middleware/uploadPortfolio.js";
+import {
+  uploadPortfolioPhotos,
+  uploadPortfolioSinglePhoto,
+} from "../middleware/uploadPortfolio.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
@@ -26,5 +30,14 @@ router.post(
   addPortfolioGalleryPhotos
 );
 router.delete("/me/gallery/:photoId", authMiddleware, deletePortfolioGalleryPhoto);
+
+// Edit Portfolio → profile / cover / navbar photo upload
+// (:kind is "profile", "cover" or "navbar").
+router.post(
+  "/me/photo/:kind",
+  authMiddleware,
+  uploadPortfolioSinglePhoto,
+  uploadPortfolioPhoto
+);
 
 export default router;

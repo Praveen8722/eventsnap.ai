@@ -140,5 +140,6 @@ export const sendInquiryEmail = ({ to, photographerName, inquiry }) => {
     </table>
     <p style="color:#666">Reply to this email to respond to the customer directly.</p>`;
 
-  return sendEmail({ to, subject, text, html, replyTo: oneLine(inquiry.email) });
+  // No Reply-To when the visitor left email blank (it's optional).
+  return sendEmail({ to, subject, text, html, replyTo: oneLine(inquiry.email) || undefined });
 };

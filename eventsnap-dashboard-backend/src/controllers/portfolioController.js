@@ -17,6 +17,7 @@ const EDITABLE_FIELDS = [
   "experience",
   "profilePhoto",
   "coverImage",
+  "navbarPhoto",
   "location",
   "serviceArea",
   "phone",
@@ -194,6 +195,54 @@ export const addPortfolioGalleryPhotos = async (req, res) => {
     await portfolio.save();
 
     res.status(200).json({ success: true, portfolio });
+  } catch (error) {
+    res.status(500).json({ message: error.message || "Server Error" });
+  }
+};
+
+// ================= UPLOAD PROFILE / COVER / NAVBAR PHOTO (Edit Portfolio) =================
+// Stored on disk like gallery photos, so the Portfolio document only keeps a
+// short "/uploads/portfolio/x.jpg" path instead of a large base64 data URL.
+const PHOTO_FIELDS = {
+  profile: "profilePhoto",
+  cover: "coverImage",
+  navbar: "navbarPhoto",
+};
+
+// Only ever remove a file this server created for a portfolio photo.
+const removePortfolioUpload = (url) => {
+  if (typeof url === "string" && url.startsWith("/uploads/portfolio/")) {
+    fs.promises
+      .unlink(path.join(PORTFOLIO_UPLOAD_DIR, path.basename(url)))
+      .catch(() => {});
+  }
+};
+
+export const uploadPortfolioPhoto = async (req, res) => {
+  const field = PHOTO_FIELDS[req.params.kind];
+  try {
+    if (!field) {
+      if (req.file) removePortfolioUpload(`/uploads/portfolio/${req.file.filename}`);
+      return res.status(400).json({ success: false, message: "Unknown photo type" });
+    }
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "Please select a photo to upload" });
+    }
+
+    const portfolio = await Portfolio.findOne({ user: req.userId });
+    if (!portfolio) {
+      removePortfolioUpload(`/uploads/portfolio/${req.file.filename}`);
+      return res.status(404).json({ message: "Portfolio not found" });
+    }
+
+    const previous = portfolio[field];
+    const url = `/uploads/portfolio/${req.file.filename}`;
+    portfolio[field] = url;
+    await portfolio.save();
+    // The replaced photo is no longer referenced by this field.
+    if (previous !== url) removePortfolioUpload(previous);
+
+    res.status(200).json({ success: true, url, portfolio });
   } catch (error) {
     res.status(500).json({ message: error.message || "Server Error" });
   }
