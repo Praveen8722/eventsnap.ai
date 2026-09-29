@@ -92,7 +92,7 @@ export function GalleryManagement() {
         className="hidden"
       />
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold text-[#1E1E1E]">Gallery</h2>
           <p className="text-gray-500 text-sm mt-0.5">Manage the photos displayed in your public portfolio</p>
@@ -109,7 +109,7 @@ export function GalleryManagement() {
 
       {/* Filters + bulk actions */}
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center bg-gray-100 rounded-lg p-1 gap-1">
+        <div className="flex flex-wrap items-center bg-gray-100 rounded-lg p-1 gap-1">
           {cats.map(c => (
             <button key={c} onClick={() => setFilter(c)} className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${filter === c ? 'bg-white shadow-sm text-[#6C63FF]' : 'text-gray-500'}`}>{c}</button>
           ))}

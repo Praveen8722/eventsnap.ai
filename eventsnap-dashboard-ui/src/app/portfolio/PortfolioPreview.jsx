@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, createContext, useContext } from "react";
+import { useState, useRef, useEffect, createContext, useContext } from "react";
 import { createPortal } from "react-dom";
 import {
   Monitor,
@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { usePortfolioData } from "./portfolioStore";
+import { DEFAULT_PORTFOLIO } from "./portfolioData";
+import { publicPortfolioUrl, displayUrl } from "@/lib/portfolioQr";
 import { viewBookings } from "@/api/bookingApi";
 import { portfolioAssetUrl } from "@/api/portfolioApi";
 import { submitInquiry } from "@/api/inquiryApi";
@@ -331,6 +333,17 @@ const useT = () => useContext(ThemeCtx) || buildTheme("dark", "#6C63FF");
 
 // ─── Public Portfolio ──────────────────────────────────────────────────────────
 
+// Up to two initials of the portfolio's own name ("Lalitha Photoshop" -> "LP").
+const initialsOf = (text) =>
+  String(text || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase();
+
 function PublicNav({ isMobile }) {
   const p = usePortfolioData();
   const t = useT();
@@ -424,21 +437,32 @@ function PublicNav({ isMobile }) {
             cursor: "pointer",
           }}
         >
-          <div
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              background: t.accGradWarm,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <span style={{ color: "#FFFFFF", fontWeight: 700, fontSize: 14 }}>
-              MC
-            </span>
-          </div>
+          {/* This portfolio owner's own profile photo, else their initials.
+              The seeded starter photo is a stock placeholder, not the owner. */}
+          {p.profilePhoto && p.profilePhoto !== DEFAULT_PORTFOLIO.profilePhoto ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={photoSrc(p.profilePhoto, "w=72&h=72&fit=crop&auto=format")}
+              alt=""
+              style={{ width: 36, height: 36, borderRadius: 10, objectFit: "cover", flexShrink: 0 }}
+            />
+          ) : (
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: t.accGradWarm,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <span style={{ color: "#FFFFFF", fontWeight: 700, fontSize: 14 }}>
+                {initialsOf(p.name)}
+              </span>
+            </div>
+          )}
           <span style={{ color: t.pText, fontWeight: 700, fontSize: 16 }}>
             {p.name}
           </span>
@@ -2100,12 +2124,27 @@ export function PortfolioPreview() {
   const isMobile = device === "mobile";
   const isTablet = device === "tablet";
 
-  const publicUrl = `eventsnap.ai/p/${livePortfolio.slug}`;
+  // The public portfolio picks its layout from the isMobile prop, not CSS —
+  // so when the preview frame itself is narrow (tablet/phone screens), render
+  // the compact layout even in "Desktop" mode instead of a crushed desktop one.
+  const frameRef = useRef(null);
+  const [frameWidth, setFrameWidth] = useState(null);
+  useEffect(() => {
+    const el = frameRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(([entry]) => setFrameWidth(entry.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const narrowFrame = frameWidth !== null && frameWidth < 640;
+
+  // Same live URL the QR code encodes (shown without "https://").
+  const publicUrl = displayUrl(publicPortfolioUrl(livePortfolio.slug));
 
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold text-[#1E1E1E]">
             Preview Portfolio
@@ -2121,7 +2160,7 @@ export function PortfolioPreview() {
       </div>
 
       {/* Toolbar */}
-      <div className="bg-white border border-gray-100 rounded-xl p-3 flex items-center gap-4 shadow-sm">
+      <div className="bg-white border border-gray-100 rounded-xl p-3 flex flex-wrap items-center gap-4 shadow-sm">
         {/* Device toggle */}
         <div className="flex items-center bg-gray-100 rounded-lg p-1 gap-1">
           {Object.entries(DEVICE_CONFIG).map(([mode, cfg]) => {
@@ -2137,16 +2176,17 @@ export function PortfolioPreview() {
                 }`}
               >
                 <Icon size={14} />
-                {cfg.label}
+                {/* Icon-only on phone-width columns (label kept for screen readers). */}
+                <span className="@max-[420px]:sr-only">{cfg.label}</span>
               </button>
             );
           })}
         </div>
 
         {/* URL bar */}
-        <div className="flex-1 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
+        <div className="flex-1 min-w-0 @max-[420px]:basis-full flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
           <div className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
-          <span className="text-xs text-gray-500 font-mono">{publicUrl}</span>
+          <span className="text-xs text-gray-500 font-mono truncate">{publicUrl}</span>
         </div>
 
         <button className="flex items-center gap-1 text-gray-400 hover:text-gray-600 text-xs">
@@ -2157,15 +2197,16 @@ export function PortfolioPreview() {
 
       {/* Preview frame */}
       <div
-        className="bg-gray-200 rounded-2xl p-4 flex justify-center"
+        ref={frameRef}
+        className="bg-gray-200 rounded-2xl p-2 @min-[480px]:p-4 flex justify-center"
         style={{ minHeight: 600 }}
       >
-        {/* Browser chrome */}
+        {/* Browser chrome — never wider than the frame it sits in */}
         <div
           className="bg-white rounded-xl overflow-hidden shadow-2xl flex flex-col"
           style={{
             width: isMobile ? 390 : isTablet ? 768 : "100%",
-            maxWidth: isMobile ? 390 : isTablet ? 768 : "100%",
+            maxWidth: "100%",
           }}
         >
           {/* Browser top bar */}
@@ -2175,14 +2216,14 @@ export function PortfolioPreview() {
               <div className="w-3 h-3 rounded-full bg-yellow-400" />
               <div className="w-3 h-3 rounded-full bg-green-400" />
             </div>
-            <div className="flex-1 bg-white border border-gray-200 rounded-md px-3 py-1 text-xs text-gray-500 font-mono text-center">
+            <div className="flex-1 min-w-0 truncate bg-white border border-gray-200 rounded-md px-3 py-1 text-xs text-gray-500 font-mono text-center">
               {publicUrl}
             </div>
           </div>
 
           {/* Portfolio content — scrollable */}
           <div className="flex-1 overflow-y-auto" style={{ maxHeight: 620 }}>
-            <PublicPortfolio isMobile={isMobile || isTablet} />
+            <PublicPortfolio isMobile={isMobile || isTablet || narrowFrame} />
           </div>
         </div>
       </div>

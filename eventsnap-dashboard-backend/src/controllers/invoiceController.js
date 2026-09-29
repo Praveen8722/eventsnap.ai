@@ -33,6 +33,11 @@ export const createInvoice = async (req, res) => {
     // Fill client details from the booking when the caller didn't send them
     // — only ever from one of your own bookings.
     const booking = await Booking.findOne({ bookingId, user: req.userId });
+    if (!booking) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Booking not found" });
+    }
     const invoiceId = await nextInvoiceId(req.userId);
 
     const invoice = await Invoice.create({

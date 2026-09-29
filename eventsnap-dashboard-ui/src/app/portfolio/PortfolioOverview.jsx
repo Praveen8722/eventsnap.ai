@@ -7,12 +7,17 @@ import {
   ChevronRight, Zap
 } from 'lucide-react';
 import { usePortfolioData } from './portfolioStore';
+import { PortfolioQrCode } from './PortfolioQrCode';
+import { publicPortfolioUrl, displayUrl, downloadQr, shareQrLink } from '@/lib/portfolioQr';
 
 export function PortfolioOverview({ onNavigate }) {
   const [copied, setCopied] = useState(false);
   // The photographer's live, saved portfolio (same source Edit / Preview use).
   const portfolio = usePortfolioData();
-  const publicUrl = `eventsnap.ai/p/${portfolio.slug}`;
+  // What the QR code encodes: this photographer's live public portfolio URL.
+  const qrUrl = publicPortfolioUrl(portfolio.slug);
+  // Same URL for the Public Portfolio card (shown without "https://").
+  const publicUrl = displayUrl(qrUrl);
 
   // Completion is derived from what the portfolio actually contains.
   const completionItems = [
@@ -37,7 +42,7 @@ export function PortfolioOverview({ onNavigate }) {
   const pct = Math.round((doneCount / completionItems.length) * 100);
 
   const handleCopy = () => {
-    navigator.clipboard?.writeText(`https://${publicUrl}`).catch(() => {});
+    navigator.clipboard?.writeText(qrUrl).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -45,7 +50,7 @@ export function PortfolioOverview({ onNavigate }) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold text-[#1E1E1E]">Portfolio Overview</h2>
           <p className="text-gray-500 text-sm mt-0.5">Manage and track your public photography portfolio</p>
@@ -174,50 +179,21 @@ export function PortfolioOverview({ onNavigate }) {
 
           <p className="text-xs text-gray-500 mb-4">Clients can scan this QR code to instantly view your photography portfolio.</p>
 
-          {/* SVG QR placeholder that looks like a real QR */}
+          {/* Real QR code for this photographer's own public portfolio */}
           <div className="flex justify-center mb-4">
             <div className="p-3 bg-white border-2 border-gray-200 rounded-xl inline-block">
-              <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-                {/* Corner squares */}
-                <rect x="4" y="4" width="32" height="32" rx="3" fill="#1E1E1E"/>
-                <rect x="10" y="10" width="20" height="20" rx="1" fill="white"/>
-                <rect x="14" y="14" width="12" height="12" rx="1" fill="#1E1E1E"/>
-
-                <rect x="84" y="4" width="32" height="32" rx="3" fill="#1E1E1E"/>
-                <rect x="90" y="10" width="20" height="20" rx="1" fill="white"/>
-                <rect x="94" y="14" width="12" height="12" rx="1" fill="#1E1E1E"/>
-
-                <rect x="4" y="84" width="32" height="32" rx="3" fill="#1E1E1E"/>
-                <rect x="10" y="90" width="20" height="20" rx="1" fill="white"/>
-                <rect x="14" y="94" width="12" height="12" rx="1" fill="#1E1E1E"/>
-
-                {/* Data dots — simplified pattern */}
-                {[44,50,56,62,68,74,80].map(x =>
-                  [4,10,16,22,28,34,40,46,52,58,64,70,76,82,88,94,100,106,112].filter(y => ((x * 31 + y * 17) % 7) > 2).map(y => (
-                    <rect key={`${x}-${y}`} x={x} y={y} width="5" height="5" rx="0.5" fill="#1E1E1E"/>
-                  ))
-                )}
-                {[4,10,16,22,28,34,40].map(x =>
-                  [44,50,56,62,68,74,80,86,92,98,104,110].filter(y => ((x * 31 + y * 17) % 7) > 2).map(y => (
-                    <rect key={`${x}-${y}`} x={x} y={y} width="5" height="5" rx="0.5" fill="#1E1E1E"/>
-                  ))
-                )}
-
-                {/* Brand logo center */}
-                <rect x="50" y="50" width="20" height="20" rx="4" fill="#6C63FF"/>
-                <text x="60" y="64" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">ES</text>
-              </svg>
+              <PortfolioQrCode url={qrUrl} size={120} />
             </div>
           </div>
 
-          <p className="text-[10px] text-center text-gray-400 mb-4 font-mono">{publicUrl}</p>
+          <p className="text-[10px] text-center text-gray-400 mb-4 font-mono break-all">{displayUrl(qrUrl)}</p>
 
           <div className="grid grid-cols-2 gap-2">
-            <button className="flex items-center justify-center gap-1.5 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-xs text-gray-600">
+            <button onClick={() => downloadQr(qrUrl, { slug: portfolio.slug, format: "png", px: 200 }).catch(() => alert("Download failed"))} className="flex items-center justify-center gap-1.5 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-xs text-gray-600">
               <Download size={13} />
               Download QR
             </button>
-            <button className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-[#FF675D] hover:bg-[#EE564C] transition-colors text-xs text-white">
+            <button onClick={() => shareQrLink(qrUrl, portfolio.name)} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-[#FF675D] hover:bg-[#EE564C] transition-colors text-xs text-white">
               <Share2 size={13} />
               Share
             </button>
@@ -226,7 +202,7 @@ export function PortfolioOverview({ onNavigate }) {
       </div>
 
       {/* Quick links */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 @max-[700px]:grid-cols-2 @max-[420px]:grid-cols-1 gap-3">
         {[
           { label: 'Edit Portfolio', sub: 'edit', icon: Globe, color: '#6C63FF' },
           { label: 'Manage Gallery', sub: 'gallery', icon: Eye, color: '#FF675D' },

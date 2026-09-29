@@ -7,7 +7,12 @@ import { FaWhatsapp } from "react-icons/fa";
 import { viewBookings } from "@/api/bookingApi";
 import { getGalleries } from "@/api/galleryApi";
 import { viewInquiries } from "@/api/inquiryApi";
-import { buildNotifications, getReadIds, persistReadIds } from "@/lib/notifications";
+import {
+  buildNotifications,
+  getReadIds,
+  persistReadIds,
+  requestBellRefresh,
+} from "@/lib/notifications";
 import { isLoggedIn } from "@/lib/session";
 import { whatsAppLink } from "@/lib/whatsapp";
 
@@ -77,9 +82,29 @@ export default function NotificationsPage() {
         getGalleries(),
         viewInquiries().catch(() => null),
       ]);
-      setBookings(bRes.data?.bookings ?? []);
-      setGalleries(gRes.data?.galleries ?? []);
-      setInquiries(iRes?.data?.inquiries ?? []);
+      const nextBookings = bRes.data?.bookings ?? [];
+      const nextGalleries = gRes.data?.galleries ?? [];
+      const nextInquiries = iRes?.data?.inquiries ?? [];
+      setBookings(nextBookings);
+      setGalleries(nextGalleries);
+      setInquiries(nextInquiries);
+
+      // Viewing this page marks everything in the loaded feed as read — saved
+      // in this user's own read set (so it survives refresh / logout / login),
+      // which also clears the Navbar bell count via READ_EVENT.
+      let storedUser = null;
+      try {
+        storedUser = JSON.parse(localStorage.getItem("user") || "null");
+      } catch {
+        /* no user — buildNotifications returns nothing */
+      }
+      const ids = buildNotifications(nextBookings, nextGalleries, storedUser, nextInquiries).map((n) => n.id);
+      const read = getReadIds();
+      if (ids.some((id) => !read.includes(id))) {
+        const merged = Array.from(new Set([...read, ...ids]));
+        setReadIds(merged);
+        persistReadIds(merged);
+      }
     } catch (error) {
       console.error("Failed to load notifications", error);
     }
@@ -94,6 +119,8 @@ export default function NotificationsPage() {
       setUser(null);
     }
     fetchData();
+    // Let the Navbar bell recount now that the page is open.
+    requestBellRefresh();
   }, [fetchData]);
 
   // Stay current with changes made elsewhere in the app (Booking / Payment /
@@ -113,10 +140,14 @@ export default function NotificationsPage() {
     };
     window.addEventListener("eventsnap-bookings-updated", refetch);
     window.addEventListener("eventsnap-gallery-updated", refetch);
+    // New portfolio bookings / enquiries arrive from outside this tab —
+    // pick them up when the photographer comes back to it.
+    window.addEventListener("focus", refetch);
     window.addEventListener("eventsnap-user-updated", syncUser);
     return () => {
       window.removeEventListener("eventsnap-bookings-updated", refetch);
       window.removeEventListener("eventsnap-gallery-updated", refetch);
+      window.removeEventListener("focus", refetch);
       window.removeEventListener("eventsnap-user-updated", syncUser);
     };
   }, [fetchData]);

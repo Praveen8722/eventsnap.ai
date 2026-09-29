@@ -51,11 +51,33 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       required: false,
     },
+    // Where the booking came from — set server-side only (see
+    // bookingController.createBooking). "portfolio" bookings get the single
+    // "New Booking" notification (dashboard lib/notifications.js).
+    source: {
+      type: String,
+      enum: ["portfolio", "internal"],
+      default: "internal",
+    },
     status: {
       type: String,
       enum: ["Inquiry", "Confirmed", "In Progress", "Editing", "Ready for Delivery", "Delivered", "Cancelled"],
       default: "Inquiry",
-    }
+    },
+    // Every status the booking has been in, oldest first — written only by
+    // bookingController (on create and on each status change), never taken
+    // from the client. Drives "Booking Status Updated" notifications and the
+    // Booking Details timeline.
+    statusHistory: {
+      type: [
+        {
+          _id: false,
+          status: { type: String, required: true },
+          date: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
   },
   { timestamps: true }
 );

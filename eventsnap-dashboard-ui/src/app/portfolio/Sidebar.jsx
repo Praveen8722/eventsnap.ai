@@ -6,6 +6,7 @@ import {
   ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { usePortfolioData } from './portfolioStore';
+import { publicPortfolioUrl, displayUrl } from '@/lib/portfolioQr';
 
 export const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -25,8 +26,10 @@ export const NAV_ITEMS = [
 export function Sidebar({ active, setActive, sidebarOpen, setSidebarOpen }) {
   const { slug } = usePortfolioData();
   return (
-    <aside className={`${sidebarOpen ? 'w-56' : 'w-14'} flex-shrink-0 bg-white border-r border-gray-100 flex flex-col transition-all duration-200`}>
-      <div className="sticky top-[72px] h-[calc(100vh-72px)] flex flex-col">
+    // Below 900px of Portfolio width the aside stays a 56px rail and the
+    // expanded panel overlays the page instead of squeezing it.
+    <aside className={`${sidebarOpen ? 'w-56 @max-[900px]:w-14' : 'w-14'} flex-shrink-0 bg-white border-r border-gray-100 flex flex-col transition-all duration-200`}>
+      <div className={`sticky top-[72px] h-[calc(100vh-72px)] flex flex-col ${sidebarOpen ? '@max-[900px]:w-56 @max-[900px]:z-20 @max-[900px]:bg-white @max-[900px]:border-r @max-[900px]:border-gray-100 @max-[900px]:shadow-xl' : ''}`}>
         <div className="flex items-center justify-between px-3 py-4 border-b border-gray-100">
           {sidebarOpen && (
             <div>
@@ -44,7 +47,11 @@ export function Sidebar({ active, setActive, sidebarOpen, setSidebarOpen }) {
             return (
               <button
                 key={item.id}
-                onClick={() => setActive(item.id)}
+                onClick={(e) => {
+                  setActive(item.id);
+                  // Overlay mode (aside is only the rail): close after picking.
+                  if (e.currentTarget.closest('aside').offsetWidth < 100) setSidebarOpen(false);
+                }}
                 title={!sidebarOpen ? item.label : undefined}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 transition-all text-left ${
                   isActive
@@ -67,7 +74,8 @@ export function Sidebar({ active, setActive, sidebarOpen, setSidebarOpen }) {
               <p className="text-[10px] opacity-80 mb-2">Your portfolio is public and accepting inquiries.</p>
               <div className="flex items-center gap-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-green-300 animate-pulse" />
-                <span className="text-[10px] opacity-90">eventsnap.ai/p/{slug || 'your-portfolio'}</span>
+                {/* Same live URL the QR code encodes; long hosts wrap in the card. */}
+                <span className="text-[10px] opacity-90 min-w-0 break-all">{displayUrl(publicPortfolioUrl(slug || 'your-portfolio'))}</span>
               </div>
             </div>
           </div>

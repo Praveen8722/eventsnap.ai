@@ -24,6 +24,7 @@ import {
   DollarSign,
 } from "lucide-react";
 import { usePortfolioDataStore } from "./portfolioStore";
+import { publicPortfolioPrefix, displayUrl } from "@/lib/portfolioQr";
 
 function useDebouncedSave(onSave, delay = 1800) {
   const timer = useRef(null);
@@ -319,7 +320,7 @@ export function EditPortfolio() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold text-[#1E1E1E]">Edit Portfolio</h2>
           <p className="text-gray-500 text-sm mt-0.5">
@@ -336,7 +337,7 @@ export function EditPortfolio() {
         icon={<User size={16} />}
         defaultOpen
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 @max-[560px]:grid-cols-1 gap-4 pt-3">
           <Field label="Photographer Name">
             <input
               className={INPUT}
@@ -347,11 +348,16 @@ export function EditPortfolio() {
           </Field>
           <Field label="Portfolio URL Slug">
             <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden focus-within:border-[#6C63FF] focus-within:ring-1 focus-within:ring-[#6C63FF]/30">
-              <span className="px-3 py-2 bg-gray-50 text-xs text-gray-500 border-r border-gray-200 whitespace-nowrap">
-                eventsnap.ai/p/
+              {/* Same live URL prefix the QR code / Portfolio Link use. It can be
+                  long, so it may shorten with "…" to keep room for the slug. */}
+              <span
+                title={displayUrl(publicPortfolioPrefix())}
+                className="px-3 py-2 bg-gray-50 text-xs text-gray-500 border-r border-gray-200 whitespace-nowrap truncate max-w-[55%] @min-[640px]:max-w-[70%]"
+              >
+                {displayUrl(publicPortfolioPrefix())}
               </span>
               <input
-                className="flex-1 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none"
+                className="flex-1 min-w-0 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none"
                 value={data.slug}
                 onChange={(e) => update("slug", e.target.value)}
                 placeholder="your-name"
@@ -374,7 +380,7 @@ export function EditPortfolio() {
               placeholder="e.g. 10+ Years"
             />
           </Field>
-          <div className="sm:col-span-2">
+          <div className="sm:col-span-2 @max-[560px]:col-span-1">
             <Field label="Short Bio">
               <textarea
                 className={TEXTAREA}
@@ -431,7 +437,7 @@ export function EditPortfolio() {
 
       {/* Contact & Location */}
       <Section title="Contact & Location" icon={<MapPin size={16} />}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 @max-[560px]:grid-cols-1 gap-4 pt-3">
           <Field label="Location">
             <input
               className={INPUT}
@@ -499,7 +505,7 @@ export function EditPortfolio() {
                   Service {idx + 1}
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 @max-[560px]:grid-cols-1 gap-3">
                 <Field label="Service Name">
                   <input
                     className={INPUT}
@@ -530,7 +536,7 @@ export function EditPortfolio() {
                     placeholder="e.g. From ₹3,800"
                   />
                 </Field>
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-2 @max-[560px]:col-span-1">
                   <Field label="Description">
                     <textarea
                       className={TEXTAREA}
@@ -587,7 +593,7 @@ export function EditPortfolio() {
                   Mark as Popular
                 </label>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 @max-[560px]:grid-cols-1 gap-3 mb-3">
                 <Field label="Package Name">
                   <input
                     className={INPUT}
@@ -608,7 +614,7 @@ export function EditPortfolio() {
                     placeholder="e.g. ₹3,800"
                   />
                 </Field>
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-2 @max-[560px]:col-span-1">
                   <Field label="Description">
                     <textarea
                       className={TEXTAREA}
@@ -684,7 +690,7 @@ export function EditPortfolio() {
                   Testimonial {idx + 1}
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 @max-[560px]:grid-cols-1 gap-3">
                 <Field label="Client Name">
                   <input
                     className={INPUT}
@@ -715,7 +721,7 @@ export function EditPortfolio() {
                     placeholder="e.g. October 2024"
                   />
                 </Field>
-                <div className="sm:col-span-3">
+                <div className="sm:col-span-3 @max-[560px]:col-span-1">
                   <Field label="Review">
                     <textarea
                       className={TEXTAREA}
@@ -809,7 +815,7 @@ export function EditPortfolio() {
 
       {/* Social Media */}
       <Section title="Social Media" icon={<Share2 size={16} />}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 @max-[560px]:grid-cols-1 gap-4 pt-3">
           {(["instagram", "facebook", "youtube", "whatsapp"]).map(
             (platform) => (
               <Field

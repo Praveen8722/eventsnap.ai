@@ -7,6 +7,25 @@ import { useRouter } from "next/navigation";
 import { HiOutlineSearch } from "react-icons/hi";
 import { IoMdNotificationsOutline } from "react-icons/io";
 import { IoSettingsOutline } from "react-icons/io5";
+import { profilePhotoUrl } from "@/api/authApi";
+import { refreshSessionUser } from "@/lib/session";
+import {
+  loadNotifications,
+  unreadCountFrom,
+  READ_EVENT,
+  REFRESH_EVENT,
+} from "@/lib/notifications";
+
+// Up to two initials ("Resp Studio" -> "RS"), used when there's no photo.
+const initialsOf = (text) =>
+  String(text || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase();
 
 const getStoredUser = () => {
   try {
@@ -23,6 +42,9 @@ const Navbar = () => {
   const [search, setSearch] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  // Photo URLs that failed to load — show the initials instead.
+  const [failedPhotos, setFailedPhotos] = useState([]);
+  const markFailed = (url) => setFailedPhotos((list) => (list.includes(url) ? list : [...list, url]));
   const navRef = useRef(null);
   const searchButtonRef = useRef(null);
   const profileMenuRef = useRef(null);
@@ -31,8 +53,39 @@ const Navbar = () => {
     const syncUser = () => setCurrentUser(getStoredUser());
     syncUser();
     window.addEventListener("eventsnap-user-updated", syncUser);
+    // Then confirm against the backend (source of truth for name/photo).
+    refreshSessionUser().catch(() => {});
     return () => {
       window.removeEventListener("eventsnap-user-updated", syncUser);
+    };
+  }, []);
+
+  // Bell unread count — the same feed and per-user read set as the
+  // Notifications page (lib/notifications.js). Reloads when data may have
+  // changed (new booking/enquiry, window refocus, periodic) and recounts
+  // instantly when notifications are marked read.
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    let active = true;
+    let feed = [];
+    const recount = () => active && setUnread(unreadCountFrom(feed));
+    const reload = () =>
+      loadNotifications()
+        .then((next) => {
+          feed = next;
+          recount();
+        })
+        .catch(() => {});
+    reload();
+    const events = ["eventsnap-bookings-updated", "eventsnap-gallery-updated", REFRESH_EVENT, "focus"];
+    events.forEach((name) => window.addEventListener(name, reload));
+    window.addEventListener(READ_EVENT, recount);
+    const timer = setInterval(reload, 60000);
+    return () => {
+      active = false;
+      events.forEach((name) => window.removeEventListener(name, reload));
+      window.removeEventListener(READ_EVENT, recount);
+      clearInterval(timer);
     };
   }, []);
 
@@ -69,6 +122,9 @@ const Navbar = () => {
     };
   }, [showMobileSearch]);
 
+  const photo = profilePhotoUrl(currentUser?.profilePhoto);
+  const businessPhoto = profilePhotoUrl(currentUser?.businessPhoto);
+
   return (
     <nav
       ref={navRef}
@@ -78,17 +134,25 @@ const Navbar = () => {
       <div className="flex min-h-16 min-w-0 flex-nowrap items-center justify-between gap-2 py-2 pl-11 @min-[400px]:gap-3 md:pl-0">
         <div className="flex min-w-0 shrink items-center gap-2">
           <Link href="/dashboard" className="hidden min-w-0 shrink items-center gap-2 @min-[640px]:flex">
-            <Image
-              src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/images/studio.png`}
-              alt=""
-              width={400}
-              height={400}
-              sizes="40px"
-              priority
-              className="w-7 h-7 @min-[768px]:w-9 @min-[768px]:h-9 shrink-0 rounded-2xl"
-            />
+            {/* The signed-in photographer's own business photo, else initials. */}
+            {businessPhoto && !failedPhotos.includes(businessPhoto) ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={businessPhoto}
+                alt=""
+                onError={() => markFailed(businessPhoto)}
+                className="w-7 h-7 @min-[768px]:w-9 @min-[768px]:h-9 shrink-0 rounded-2xl object-cover"
+              />
+            ) : (
+              <span
+                aria-hidden="true"
+                className="w-7 h-7 @min-[768px]:w-9 @min-[768px]:h-9 shrink-0 rounded-2xl bg-gradient-to-br from-[#6C63FF] to-[#FF675D] flex items-center justify-center text-[10px] @min-[768px]:text-xs font-bold text-white"
+              >
+                {initialsOf(currentUser?.businessName || currentUser?.name)}
+              </span>
+            )}
             <strong className="min-w-0 truncate text-sm @min-[768px]:text-base">
-              {currentUser?.businessName || "Mallu Photo Studio"}
+              {currentUser?.businessName || currentUser?.name || ""}
             </strong>
           </Link>
           <Link
@@ -135,8 +199,21 @@ const Navbar = () => {
             <HiOutlineSearch className="text-gray-600 text-xl" />
           </button>
 
-          <Link href="/notifications" aria-label="Notifications" className="flex shrink-0 items-center justify-center">
+          <Link
+            href="/notifications"
+            aria-label={unread ? `Notifications (${unread} unread)` : "Notifications"}
+            className="relative flex shrink-0 items-center justify-center"
+          >
             <IoMdNotificationsOutline aria-hidden="true" className="text-2xl" />
+            {unread > 0 && (
+              <span
+                aria-hidden="true"
+                data-testid="notification-badge"
+                className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold leading-4 text-center"
+              >
+                {unread > 99 ? "99+" : unread}
+              </span>
+            )}
           </Link>
 
           <Link href="/my-profile" aria-label="Settings" className="flex shrink-0 items-center justify-center">
@@ -155,17 +232,26 @@ const Navbar = () => {
               className="flex min-w-0 shrink-0 items-center gap-2"
             >
               <p className="hidden min-w-0 max-w-48 truncate font-semibold text-gray-600 @min-[960px]:block">
-                {currentUser?.name || "Mallu Photographer"}
+                {currentUser?.name || ""}
               </p>
-              <Image
-                src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/images/photo_praveen.jpg`}
-                alt=""
-                width={968}
-                height={992}
-                sizes="40px"
-                priority
-                className="w-8 h-8 shrink-0 rounded-full object-cover"
-              />
+              {photo && !failedPhotos.includes(photo) ? (
+                // Plain <img>: the photo may be a data URL or an external host
+                // that next/image isn't configured for.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={photo}
+                  alt=""
+                  onError={() => markFailed(photo)}
+                  className="w-8 h-8 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <span
+                  aria-hidden="true"
+                  className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-[#6C63FF] to-[#FF675D] flex items-center justify-center text-xs font-bold text-white"
+                >
+                  {initialsOf(currentUser?.name)}
+                </span>
+              )}
             </button>
             {profileMenuOpen && (
               <div className="absolute right-0 top-full mt-2 w-48 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">

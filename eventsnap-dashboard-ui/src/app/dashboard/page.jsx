@@ -8,9 +8,9 @@ import {
   HiOutlineCalendar,
   HiCamera,
   HiOutlineClock,
-  HiOutlineCheckCircle,
-  HiOutlineExclamationCircle,
-  HiOutlinePlus,
+  HiOutlineCheckCircle,     
+  HiOutlineExclamationCircle,       
+  HiOutlinePlus, 
   HiOutlineDocumentText,
   HiOutlineUpload,
 } from "react-icons/hi";
@@ -18,19 +18,19 @@ import { LuDollarSign } from "react-icons/lu";
 import { IoArrowForward } from "react-icons/io5";
 import { isLoggedIn } from "@/lib/session";
 import { viewBookings } from "@/api/bookingApi";
-
+              
 const Model = dynamic(() => import("@/components/ui/Model"));
-
+                         
 const STATUS_BADGE = {
   Inquiry: "bg-gray-100 text-gray-600",
   Confirmed: "bg-purple-100 text-purple-700",
-  "In Progress": "bg-blue-100 text-blue-700",
+  "In Progress": "bg-blue-100 text-blue-700",     
   Editing: "bg-orange-100 text-orange-700",
-  "Ready for Delivery": "bg-cyan-100 text-cyan-700",
-  Delivered: "bg-green-100 text-green-700",
+  "Ready for Delivery": "bg-cyan-100 text-cyan-700",            
+  Delivered: "bg-green-100 text-green-700",                      
   Cancelled: "bg-red-100 text-red-700",
 };
-
+     
 const formatDate = (value) => {
   if (!value) return "-";
   const date = new Date(value);

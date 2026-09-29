@@ -21,6 +21,30 @@ export const editProfile = async (data) => {
   return await api.put(`${API}/edit-profile`, data);
 };
 
+// Signed-in user's own profile / business photo — the backend stores the
+// file and saves its URL on the user's record; the owner comes from the JWT.
+const uploadAccountPhoto = (path) => async (file) => {
+  const formData = new FormData();
+  formData.append("photo", file);
+  return await api.put(`${API}/${path}`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};
+
+export const uploadProfilePhoto = uploadAccountPhoto("profile-photo");
+export const deleteProfilePhoto = async () => {
+  return await api.delete(`${API}/profile-photo`);
+};
+
+export const uploadBusinessPhoto = uploadAccountPhoto("business-photo");
+export const deleteBusinessPhoto = async () => {
+  return await api.delete(`${API}/business-photo`);
+};
+
+// Stored profile photo path ("/uploads/profile/x.jpg") -> absolute URL.
+export const profilePhotoUrl = (photo) =>
+  photo ? (photo.startsWith("/uploads/") ? `${API_ORIGIN}${photo}` : photo) : "";
+
 export const changePassword = async (data) => {
   return await api.put(`${API}/change-password`, data);
 };

@@ -107,6 +107,19 @@ export const updateEvent = async (req, res) => {
       if (req.body[key] !== undefined) updates[key] = req.body[key];
     }
 
+    // Same rule as createEvent — a re-linked booking must be one of yours.
+    if (updates.bookingId) {
+      const booking = await Booking.findOne({
+        bookingId: updates.bookingId,
+        user: req.userId,
+      }).select("_id");
+      if (!booking) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Booking not found" });
+      }
+    }
+
     const event = await Event.findOneAndUpdate(
       { _id: id, user: req.userId },
       updates,

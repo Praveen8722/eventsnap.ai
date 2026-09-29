@@ -23,6 +23,11 @@ const nextBookingId = async (userId) => {
 // public Portfolio "Book Now" form (no login — the owner is resolved from
 // portfolioSlug, exactly like inquiryController.submitInquiry). Never trusts
 // a client-sent owner id.
+//
+// A portfolioSlug always wins over the session: the dashboard's axios
+// instance attaches the JWT to every request, so a photographer who is
+// logged in and books from someone else's public portfolio must not end up
+// owning that booking.
 export const createBooking = async (req, res) => {
   try {
     const {
@@ -38,16 +43,18 @@ export const createBooking = async (req, res) => {
       portfolioSlug,
     } = req.body;
 
-    let ownerId = req.userId || null;
+    let ownerId = null;
+    const slug = String(portfolioSlug || "").trim();
 
-    if (!ownerId) {
-      const slug = String(portfolioSlug || "").trim();
-      if (!slug) {
+    if (!slug) {
+      ownerId = req.userId || null;
+      if (!ownerId) {
         return res.status(401).json({
           success: false,
           message: "Login required, or a portfolioSlug must be provided",
         });
       }
+    } else {
       const portfolio = await Portfolio.findOne({ slug }).select("user");
       if (!portfolio) {
         return res.status(404).json({
@@ -70,7 +77,10 @@ export const createBooking = async (req, res) => {
       packegPrice,
       advancePayment,
       additionalNotes,
+      // Derived from the resolved path, never from the client's `source`.
+      source: slug ? "portfolio" : "internal",
       status: "Inquiry", // default status
+      statusHistory: [{ status: "Inquiry", date: new Date() }],
     });
 
     await newBooking.save();
@@ -185,9 +195,26 @@ export const updateBooking = async (req, res) => {
         .json({ success: false, message: "Invalid status value" });
     }
 
+    // Record a real status change in statusHistory (server-side only). A
+    // legacy booking with no history first gets its previous status as the
+    // opening entry, so the change itself is never mistaken for creation.
+    const update = { $set: updates };
+    if (updates.status !== undefined) {
+      const current = await Booking.findOne({ bookingId, user: req.userId }).select(
+        "status statusHistory createdAt"
+      );
+      if (current && current.status !== updates.status) {
+        const entries = current.statusHistory?.length
+          ? []
+          : [{ status: current.status, date: current.createdAt || new Date() }];
+        entries.push({ status: updates.status, date: new Date() });
+        update.$push = { statusHistory: { $each: entries } };
+      }
+    }
+
     const booking = await Booking.findOneAndUpdate(
       { bookingId, user: req.userId },
-      updates,
+      update,
       { new: true, runValidators: true }
     );
     if (!booking) {

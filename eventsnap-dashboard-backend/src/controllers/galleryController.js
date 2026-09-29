@@ -196,7 +196,9 @@ export const getSharedGallery = async (req, res) => {
     const gallery = await Gallery.findOneAndUpdate(
       { shareSlug: slug },
       { $inc: { views: 1 } },
-      { new: true }
+      // Public response — keep the owner's user id private, same as the
+      // public portfolio and inquiry responses.
+      { new: true, projection: { user: 0 } }
     );
     if (!gallery) {
       return res
@@ -386,9 +388,18 @@ export const deleteGalleryPhotos = async (req, res) => {
 export const trackDownload = async (req, res) => {
   try {
     const { id } = req.params;
-    const gallery = id.match(/^[0-9a-fA-F]{24}$/)
-      ? await Gallery.findByIdAndUpdate(
-          id,
+    // A Mongo _id is the owner's handle — only the signed-in owner may use
+    // it. The public share slug (what /g/:slug sends) stays open, exactly
+    // like viewing the shared gallery.
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(id);
+    if (isObjectId && !req.userId) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Login required" });
+    }
+    const gallery = isObjectId
+      ? await Gallery.findOneAndUpdate(
+          { _id: id, user: req.userId },
           { $inc: { downloads: 1 } },
           { new: true }
         )

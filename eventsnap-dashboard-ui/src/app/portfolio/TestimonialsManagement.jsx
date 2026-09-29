@@ -20,7 +20,7 @@ export function TestimonialsManagement() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold text-[#1E1E1E]">Testimonials</h2>
           <p className="text-gray-500 text-sm mt-0.5">Manage client reviews displayed on your portfolio</p>
@@ -56,7 +56,7 @@ export function TestimonialsManagement() {
                 </button>
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 @max-[560px]:grid-cols-1 gap-3">
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Client Name</label>
                 <input className={INPUT} value={t.clientName} onChange={e => update(t.id, 'clientName', e.target.value)} />
@@ -69,7 +69,7 @@ export function TestimonialsManagement() {
                 <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Date</label>
                 <input className={INPUT} value={t.date} onChange={e => update(t.id, 'date', e.target.value)} />
               </div>
-              <div className="sm:col-span-3 space-y-1.5">
+              <div className="sm:col-span-3 @max-[560px]:col-span-1 space-y-1.5">
                 <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Review</label>
                 <textarea className={TEXTAREA} rows={2} value={t.review} onChange={e => update(t.id, 'review', e.target.value)} />
               </div>

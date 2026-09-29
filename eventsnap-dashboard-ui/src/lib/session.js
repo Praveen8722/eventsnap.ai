@@ -20,6 +20,19 @@ export const saveSession = (token, userId, user = {}) => {
   localStorage.setItem("user", JSON.stringify({ ...user, _id: userId }));
 };
 
+// Re-reads the signed-in user's record (incl. profilePhoto) from the backend,
+// which is the source of truth — so a page refresh always reflects the
+// database, e.g. a photo changed on another device. The result is dropped if
+// the session changed (logout / another account) while the request was out.
+export const refreshSessionUser = async () => {
+  const token = getToken();
+  if (!token) return;
+  const res = await getDashboard();
+  if (getToken() !== token) return;
+  saveSession(token, res.data.userId, res.data.user);
+  window.dispatchEvent(new CustomEvent("eventsnap-user-updated"));
+};
+
 export const clearSession = () => {
   localStorage.removeItem("token");
   localStorage.removeItem("user");

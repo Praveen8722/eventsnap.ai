@@ -28,7 +28,12 @@ export const syncUserToWebsite = async (user) => {
         website: user.website || "",
         businessDescription: user.businessDescription || "",
       },
-      { timeout: 5000 }
+      {
+        timeout: 5000,
+        // The website backend only accepts syncs carrying its shared key
+        // (eventsnap-website-backend/src/middleware/requireApiKey.js).
+        headers: { "x-api-key": process.env.COMPANY_WEBSITE_API_KEY || "" },
+      }
     );
   } catch (error) {
     // Company website backend may be offline/unreachable — that's fine,

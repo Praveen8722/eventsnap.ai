@@ -19,7 +19,11 @@ import { PortfolioSettings } from './PortfolioSettings';
 // ─── Main Portfolio Container ─────────────────────────────────────────────────
 export function Portfolio() {
   const [active, setActive] = useState('overview');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Expanded on desktop; starts as the icon rail on tablet/mobile so the page
+  // content keeps its width. (Rendered client-side only — see page.jsx.)
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => typeof window === 'undefined' || window.innerWidth >= 1280
+  );
 
   const renderPage = () => {
     switch (active) {
@@ -43,7 +47,7 @@ export function Portfolio() {
 
   return (
     <PortfolioDataProvider>
-      <div className="flex gap-0 min-h-[calc(100vh-72px)]">
+      <div className="@container flex gap-0 min-h-[calc(100vh-72px)]">
         {/* Portfolio sub-sidebar */}
         <Sidebar
           active={active}
@@ -53,14 +57,16 @@ export function Portfolio() {
         />
 
         {/* Page content */}
-        <div className="flex-1 overflow-y-auto">
+        {/* @container: section pages size their grids by this column's width
+            (the app + portfolio sidebars leave far less than the viewport). */}
+        <div className="@container flex-1 min-w-0 overflow-y-auto">
           {/* Breadcrumb */}
-          <div className="flex items-center gap-2 px-6 py-3 border-b border-gray-100 bg-white sticky top-0 z-10">
+          <div className="flex items-center gap-2 px-4 @min-[480px]:px-6 py-3 border-b border-gray-100 bg-white sticky top-0 z-10">
             <span className="text-xs text-gray-400">Portfolio</span>
             <span className="text-xs text-gray-300">/</span>
-            <span className="text-xs font-medium text-[#1E1E1E]">{activeItem?.label}</span>
+            <span className="text-xs font-medium text-[#1E1E1E] whitespace-nowrap">{activeItem?.label}</span>
           </div>
-          <div className="p-6">
+          <div className="p-4 @min-[480px]:p-6">
             {renderPage()}
           </div>
         </div>

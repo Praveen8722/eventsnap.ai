@@ -1,12 +1,31 @@
+import fs from "fs";
+import path from "path";
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { PROFILE_UPLOAD_DIR } from "../middleware/uploadProfile.js";
+
+const PROFILE_URL_PREFIX = "/uploads/profile/";
+
+// Only ever removes a file this feature created — never an arbitrary path.
+const removeProfileFile = (url) => {
+  if (!url || !url.startsWith(PROFILE_URL_PREFIX)) return;
+  fs.promises
+    .unlink(path.join(PROFILE_UPLOAD_DIR, path.basename(url)))
+    .catch(() => {});
+};
 
 // ================= SIGNUP =================
 export const signup = async (req, res) => { 
   try {
     const { name, businessName, email, phone, password, confirmPassword } =
       req.body;
+
+    // Plain strings only — an object like {"$ne": null} would otherwise be
+    // run as a MongoDB query operator.
+    if (typeof email !== "string" || typeof password !== "string") {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
 
     // 1.  Validate password
     if (password !== confirmPassword) {
@@ -45,6 +64,13 @@ export const signup = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+
+    // Plain strings only — an object like {"$regex": "^lalitha"} would
+    // otherwise be run as a MongoDB query and could log into someone else's
+    // account with just a guessed password.
+    if (typeof email !== "string" || typeof password !== "string") {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
 
     // 1. Check user existence
     const user = await User.findOne({ email });
@@ -96,7 +122,7 @@ export const editProfile = async (req, res) => {
       userId,
       { name, businessName, phone },
       { new: true }
-    );
+    ).select("-password"); // never send the password hash to the browser
 
     res
       .status(200)
@@ -144,10 +170,71 @@ export const deleteAccount = async (req, res) => {
   try {
     const userId = req.userId; // from token
 
-    await User.findByIdAndDelete(userId);
+    const deleted = await User.findByIdAndDelete(userId);
+    removeProfileFile(deleted?.profilePhoto);
+    removeProfileFile(deleted?.businessPhoto);
 
     res.status(200).json({ message: "Account deleted successfully" });
   } catch {
     res.status(500).json({ message: "Server Error" });
   }
 };
+
+// ================= ACCOUNT PHOTOS (profile / business) =================
+// The file is already on disk (middleware/uploadProfile.js); only its URL is
+// saved, in `field` of the authenticated user's own record — the owner is
+// always req.userId from the JWT, never anything the client sends.
+const photoUpdater = (field, label) => async (req, res) => {
+  const file = req.file;
+  if (!file) {
+    return res.status(400).json({ message: "Please select a photo to upload" });
+  }
+  const url = `${PROFILE_URL_PREFIX}${file.filename}`;
+  if (!file.size) {
+    removeProfileFile(url);
+    return res.status(400).json({ message: "The selected photo is empty" });
+  }
+  try {
+    const previous = await User.findByIdAndUpdate(
+      req.userId,
+      { [field]: url },
+      { new: false }
+    ).select(field);
+    if (!previous) {
+      removeProfileFile(url);
+      return res.status(404).json({ message: "User not found" });
+    }
+    // Replaced — remove this user's old file.
+    if (previous[field] !== url) removeProfileFile(previous[field]);
+
+    const user = await User.findById(req.userId).select("-password");
+    res.status(200).json({ message: `${label} updated`, user });
+  } catch {
+    removeProfileFile(url);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+const photoRemover = (field, label) => async (req, res) => {
+  try {
+    const previous = await User.findByIdAndUpdate(
+      req.userId,
+      { [field]: "" },
+      { new: false }
+    ).select(field);
+    if (!previous) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    removeProfileFile(previous[field]);
+
+    const user = await User.findById(req.userId).select("-password");
+    res.status(200).json({ message: `${label} removed`, user });
+  } catch {
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+export const updateProfilePhoto = photoUpdater("profilePhoto", "Profile photo");
+export const deleteProfilePhoto = photoRemover("profilePhoto", "Profile photo");
+export const updateBusinessPhoto = photoUpdater("businessPhoto", "Business photo");
+export const deleteBusinessPhoto = photoRemover("businessPhoto", "Business photo");

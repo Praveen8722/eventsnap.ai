@@ -26,12 +26,12 @@ const currentUserId = () => {
   }
 };
 
-// Namespaces the read-state key by user id. Falls back to the bare base key
-// only when no user is known yet (e.g. this runs before login on a public
-// page) — normal signed-in use always resolves to a per-user key.
+// Namespaces the read-state key by user id. With no signed-in user there is
+// no key at all (reads are empty, writes are skipped) — a shared fallback
+// key would let one account's read flags leak into another's.
 const readKey = () => {
   const id = currentUserId();
-  return id ? `${READ_KEY}:${id}` : READ_KEY;
+  return id ? `${READ_KEY}:${id}` : null;
 };
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -128,8 +128,13 @@ export const buildNotifications = (bookings, galleries, user, inquiries = []) =>
       });
     });
 
-    // Outstanding balance after the event date has passed.
-    const remaining = Number(b.remaining) || 0;
+    // Outstanding balance after the event date has passed. Bookings carry no
+    // `remaining` field — compute it the same way the Dashboard does
+    // (package price minus advance + any recorded payments).
+    const paid =
+      (Number(b.advancePayment) || 0) +
+      (b.payments || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    const remaining = Number(b.remaining ?? Math.max((Number(b.packegPrice) || 0) - paid, 0)) || 0;
     const eventPast = b.eventDate && new Date(b.eventDate).getTime() < now;
     if (remaining > 0 && eventPast && b.status !== "Cancelled") {
       list.push({
@@ -272,8 +277,10 @@ export const buildNotifications = (bookings, galleries, user, inquiries = []) =>
 
 export const getReadIds = () => {
   if (typeof window === "undefined") return [];
+  const key = readKey();
+  if (!key) return [];
   try {
-    return JSON.parse(localStorage.getItem(readKey()) || "[]");
+    return JSON.parse(localStorage.getItem(key) || "[]");
   } catch {
     return [];
   }
@@ -281,8 +288,10 @@ export const getReadIds = () => {
 
 export const persistReadIds = (ids) => {
   if (typeof window === "undefined") return;
+  const key = readKey();
+  if (!key) return;
   try {
-    localStorage.setItem(readKey(), JSON.stringify(ids));
+    localStorage.setItem(key, JSON.stringify(ids));
   } catch {
     /* ignore storage errors */
   }
@@ -306,16 +315,18 @@ const readStoredUser = () => {
 
 // Fetch the same data the Notifications page uses and return the built feed.
 export const loadNotifications = async () => {
+  // Same as the Notifications page: an inquiries failure never blanks the
+  // booking/payment/gallery feed.
   const [bRes, gRes, iRes] = await Promise.all([
     viewBookings(),
     getGalleries(),
-    viewInquiries(),
+    viewInquiries().catch(() => null),
   ]);
   return buildNotifications(
     bRes.data?.bookings ?? [],
     gRes.data?.galleries ?? [],
     readStoredUser(),
-    iRes.data?.inquiries ?? []
+    iRes?.data?.inquiries ?? []
   );
 };
 

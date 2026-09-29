@@ -64,7 +64,7 @@ export function PortfolioSettings() {
         <div className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Portfolio Theme</label>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               {[{ value: 'dark', label: 'Dark', preview: 'bg-[#0D0B1E]' }, { value: 'light', label: 'Light', preview: 'bg-gray-50' }, { value: 'minimal', label: 'Minimal', preview: 'bg-white' }].map(t => (
                 <button key={t.value} onClick={() => scheduleSave({ ...data, theme: t.value })} className={`flex-1 flex flex-col gap-2 p-3 rounded-xl border-2 transition-all ${data.theme === t.value ? 'border-[#6C63FF]' : 'border-gray-200'}`}>
                   <div className={`h-12 rounded-lg ${t.preview} border border-gray-200`} />
@@ -75,7 +75,7 @@ export function PortfolioSettings() {
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Accent Color</label>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               {['#6C63FF', '#FF675D', '#10B981', '#F59E0B', '#3B82F6', '#EC4899'].map(c => (
                 <button key={c} onClick={() => scheduleSave({ ...data, accent: c })} className={`w-8 h-8 rounded-full transition-all ${data.accent === c ? 'ring-2 ring-offset-2' : ''}`} style={{ background: c, ringColor: c }} />
               ))}

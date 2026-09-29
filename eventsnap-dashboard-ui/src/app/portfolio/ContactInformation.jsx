@@ -48,7 +48,7 @@ export function ContactInformation() {
       </div>
       <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm space-y-5">
         <h3 className="font-semibold text-[#1E1E1E]">Contact Details</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 @max-[560px]:grid-cols-1 gap-4">
           {[
             { key: 'phone', label: 'Phone Number', placeholder: '+1 (555) 000-0000' },
             { key: 'email', label: 'Email Address', placeholder: 'hello@yourname.com' },
@@ -64,7 +64,7 @@ export function ContactInformation() {
       </div>
       <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm space-y-5">
         <h3 className="font-semibold text-[#1E1E1E]">Social Media</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 @max-[560px]:grid-cols-1 gap-4">
           {[
             { key: 'instagram', label: 'Instagram', placeholder: '@yourhandle' },
             { key: 'facebook', label: 'Facebook', placeholder: 'yourpage' },

@@ -3,11 +3,13 @@
 import { useState } from 'react';
 import { Copy, Check, ExternalLink, Globe } from 'lucide-react';
 import { usePortfolioData } from './portfolioStore';
+import { publicPortfolioUrl, displayUrl } from '@/lib/portfolioQr';
 
 export function PortfolioLink() {
   const p = usePortfolioData();
   const [copied, setCopied] = useState(null);
-  const publicUrl = `https://eventsnap.ai/p/${p.slug}`;
+  // This photographer's live public portfolio — the same URL the QR encodes.
+  const publicUrl = publicPortfolioUrl(p.slug);
 
   const handleCopy = (text, key) => {
     navigator.clipboard?.writeText(text).catch(() => {});
@@ -17,7 +19,9 @@ export function PortfolioLink() {
 
   const LINKS = [
     { key: 'full', label: 'Full Portfolio URL', value: publicUrl, desc: 'Your complete portfolio URL' },
-    { key: 'short', label: 'Short URL', value: `evsnp.ai/${p.slug}`, desc: 'Shortened version for print and social' },
+    // Same live URL without "https://" (there is no separate short-link
+    // domain); Copy still copies the full, openable URL.
+    { key: 'short', label: 'Short URL', value: displayUrl(publicUrl), copy: publicUrl, desc: 'Shortened version for print and social' },
   ];
 
   const SHARE = [
@@ -40,11 +44,11 @@ export function PortfolioLink() {
             <label className="text-xs font-medium text-gray-600 uppercase tracking-wide block mb-1.5">{link.label}</label>
             <p className="text-xs text-gray-400 mb-2">{link.desc}</p>
             <div className="flex items-center gap-2">
-              <div className="flex-1 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5">
+              <div className="flex-1 min-w-0 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5">
                 <Globe size={14} className="text-gray-400 flex-shrink-0" />
                 <span className="text-sm text-gray-700 font-mono flex-1 truncate">{link.value}</span>
               </div>
-              <button onClick={() => handleCopy(link.value, link.key)} className={`flex items-center gap-1.5 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all ${copied === link.key ? 'bg-green-50 border-green-200 text-green-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+              <button onClick={() => handleCopy(link.copy ?? link.value, link.key)} className={`flex items-center gap-1.5 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all ${copied === link.key ? 'bg-green-50 border-green-200 text-green-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
                 {copied === link.key ? <Check size={14} /> : <Copy size={14} />}
                 {copied === link.key ? 'Copied!' : 'Copy'}
               </button>
@@ -72,7 +76,7 @@ export function PortfolioLink() {
       </div>
 
       {/* Custom domain banner */}
-      <div className="bg-gradient-to-r from-[#6C63FF]/10 to-[#FF675D]/10 rounded-xl border border-[#6C63FF]/20 p-5 flex items-center gap-4">
+      <div className="bg-gradient-to-r from-[#6C63FF]/10 to-[#FF675D]/10 rounded-xl border border-[#6C63FF]/20 p-5 flex flex-wrap items-center gap-4">
         <div className="w-10 h-10 bg-[#6C63FF] rounded-xl flex items-center justify-center flex-shrink-0">
           <Globe size={20} className="text-white" />
         </div>

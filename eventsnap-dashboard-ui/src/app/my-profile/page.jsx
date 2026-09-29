@@ -1,10 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LuSave, LuCamera } from "react-icons/lu";
 import { FiUser } from "react-icons/fi";
-import { editProfile } from "@/api/authApi";
+import {
+  editProfile,
+  uploadProfilePhoto,
+  deleteProfilePhoto,
+  uploadBusinessPhoto,
+  deleteBusinessPhoto,
+  profilePhotoUrl,
+} from "@/api/authApi";
 import { isLoggedIn } from "@/lib/session";
 
 const defaultProfile = {
@@ -55,6 +62,9 @@ const MyProfile = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingPayment, setSavingPayment] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const photoInputRef = useRef(null);
+  const businessPhotoInputRef = useRef(null);
 
   const syncProfile = (user) => {
     setProfile({
@@ -74,7 +84,65 @@ const MyProfile = () => {
       syncProfile(storedUser);
     }
     setLoading(false);
+
+    // The navbar re-reads the account from the backend on load; pick up the
+    // confirmed photos without touching any unsaved form edits.
+    const syncPhoto = () => {
+      const stored = getStoredUser();
+      setProfile((prev) => ({
+        ...prev,
+        profilePhoto: stored?.profilePhoto || "",
+        businessPhoto: stored?.businessPhoto || "",
+      }));
+    };
+    window.addEventListener("eventsnap-user-updated", syncPhoto);
+    return () => window.removeEventListener("eventsnap-user-updated", syncPhoto);
   }, []);
+
+  // Photos are saved on the backend for the signed-in account (owner from the
+  // JWT); the response is that account's record, which becomes the session.
+  const applyPhotoResponse = (user) => {
+    setProfile((prev) => ({
+      ...prev,
+      profilePhoto: user?.profilePhoto || "",
+      businessPhoto: user?.businessPhoto || "",
+    }));
+    localStorage.setItem("user", JSON.stringify(user));
+    window.dispatchEvent(new CustomEvent("eventsnap-user-updated", { detail: user }));
+  };
+
+  const runPhotoAction = async (action, failMessage) => {
+    if (photoBusy) return;
+    setPhotoBusy(true);
+    try {
+      const response = await action();
+      applyPhotoResponse(response.data.user);
+    } catch (error) {
+      alert(error?.response?.data?.message || failMessage);
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  // File picker change -> upload with the given API call.
+  const onPhotoPicked = (upload) => (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file
+    if (file) runPhotoAction(() => upload(file), "Failed to upload photo");
+  };
+
+  const handlePhotoSelected = onPhotoPicked(uploadProfilePhoto);
+  const handleBusinessPhotoSelected = onPhotoPicked(uploadBusinessPhoto);
+
+  const handleRemovePhoto = () => {
+    if (!photoBusy && window.confirm("Remove your profile photo?"))
+      runPhotoAction(deleteProfilePhoto, "Failed to remove photo");
+  };
+
+  const handleRemoveBusinessPhoto = () => {
+    if (!photoBusy && window.confirm("Remove your business photo?"))
+      runPhotoAction(deleteBusinessPhoto, "Failed to remove photo");
+  };
 
   const updateField = (field, value) => {
     setProfile((prev) => ({
@@ -145,8 +213,30 @@ const MyProfile = () => {
         <div className="w-full md:flex-2 border border-gray-300 rounded-2xl p-6">
           <div className="flex items-center text-center border-b border-gray-300 pb-4">
             <div className="relative">
-              <FiUser className="text-white border rounded-full p-6  bg-[#6C63FF]     " size={100} />
-              <button className="absolute bottom-1 right-1 bg-white text-[#5a52e0] rounded-full p-2 shadow-md">
+              {profile.profilePhoto ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={profilePhotoUrl(profile.profilePhoto)}
+                  alt="Profile photo"
+                  className="w-[100px] h-[100px] rounded-full object-cover border"
+                />
+              ) : (
+                <FiUser className="text-white border rounded-full p-6  bg-[#6C63FF]     " size={100} />
+              )}
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePhotoSelected}
+              />
+              <button
+                type="button"
+                aria-label="Change profile photo"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={photoBusy || loading}
+                className="absolute bottom-1 right-1 bg-white text-[#5a52e0] rounded-full p-2 shadow-md disabled:opacity-60"
+              >
                 <LuCamera />
               </button>
             </div>
@@ -154,6 +244,16 @@ const MyProfile = () => {
               <h2 className="text-lg font-semibold text-gray-800">{profile.name || "Your Name"}</h2>
               <p className="text-sm text-gray-500">{profile.businessName || "Business Name"}</p>
               <p className="text-xs text-gray-500">{formatMemberSince(profile.createdAt)}</p>
+              {profile.profilePhoto && (
+                <button
+                  type="button"
+                  onClick={handleRemovePhoto}
+                  disabled={photoBusy}
+                  className="text-xs text-red-500 hover:underline disabled:opacity-60"
+                >
+                  Remove photo
+                </button>
+              )}
             </div>
           </div>
 
@@ -211,6 +311,50 @@ const MyProfile = () => {
                   onChange={(e) => updateField("businessAddress", e.target.value)}
                   className="mt-1 w-full text-sm  rounded-lg px-3 py-2 bg-gray-100"
                 />
+              </div>
+            </div>
+
+            {/* Business photo — shown beside the Business Name in the navbar. */}
+            <div className="mt-4">
+              <label className="text-sm text-gray-600">Business Photo</label>
+              <div className="mt-1 flex items-center gap-3">
+                {profile.businessPhoto ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={profilePhotoUrl(profile.businessPhoto)}
+                    alt="Business photo"
+                    className="w-12 h-12 rounded-2xl object-cover border"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400">
+                    <LuCamera />
+                  </div>
+                )}
+                <input
+                  ref={businessPhotoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleBusinessPhotoSelected}
+                />
+                <button
+                  type="button"
+                  onClick={() => businessPhotoInputRef.current?.click()}
+                  disabled={photoBusy || loading}
+                  className="text-sm font-medium text-[#6C63FF] hover:underline disabled:opacity-60"
+                >
+                  {profile.businessPhoto ? "Change photo" : "Upload photo"}
+                </button>
+                {profile.businessPhoto && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveBusinessPhoto}
+                    disabled={photoBusy}
+                    className="text-xs text-red-500 hover:underline disabled:opacity-60"
+                  >
+                    Remove
+                  </button>
+                )}
               </div>
             </div>
 

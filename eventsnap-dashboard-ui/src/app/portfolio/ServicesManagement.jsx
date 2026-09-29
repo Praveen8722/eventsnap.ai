@@ -19,7 +19,7 @@ export function ServicesManagement() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold text-[#1E1E1E]">Services</h2>
           <p className="text-gray-500 text-sm mt-0.5">Manage the photography services shown on your portfolio</p>
@@ -38,7 +38,7 @@ export function ServicesManagement() {
                 <Trash2 size={16} />
               </button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 @max-[560px]:grid-cols-1 gap-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Service Name</label>
                 <input className={INPUT} value={svc.title} onChange={e => updateService(svc.id, 'title', e.target.value)} placeholder="e.g. Wedding Photography" />

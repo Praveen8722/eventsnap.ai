@@ -13,6 +13,7 @@ import {
 } from "../controllers/galleryController.js";
 import { uploadGalleryPhotos } from "../middleware/uploadGallery.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
+import optionalAuthMiddleware from "../middlewares/optionalAuthMiddleware.js";
 
 const router = express.Router();
 
@@ -28,8 +29,10 @@ router.delete("/:id", authMiddleware, deleteGallery);
 router.get("/:id", authMiddleware, getGallery);
 
 // Public — the client-facing shared gallery link (/g/:slug) and download/view
-// tracking. No login: the unguessable share link/id is the access control here.
+// tracking. No login: the unguessable share link is the access control here.
+// Download tracking by the gallery's _id requires the owner's session (see
+// galleryController.trackDownload).
 router.get("/share/:slug", getSharedGallery);
-router.patch("/:id/download", trackDownload);
+router.patch("/:id/download", optionalAuthMiddleware, trackDownload);
 
 export default router;

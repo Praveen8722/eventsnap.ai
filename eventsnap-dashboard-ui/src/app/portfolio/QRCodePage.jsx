@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { Download, Share2 } from 'lucide-react';
 import { usePortfolioData } from './portfolioStore';
+import { PortfolioQrCode } from './PortfolioQrCode';
+import { publicPortfolioUrl, displayUrl, downloadQr, shareQrLink } from '@/lib/portfolioQr';
 
 export function QRCodePage() {
   const p = usePortfolioData();
@@ -11,6 +13,8 @@ export function QRCodePage() {
 
   const sizeMap = { small: 140, medium: 200, large: 260 };
   const qrSize = sizeMap[size];
+  // This photographer's own live public portfolio URL — what the QR encodes.
+  const url = publicPortfolioUrl(p.slug);
 
   return (
     <div className="space-y-5">
@@ -23,41 +27,11 @@ export function QRCodePage() {
         {/* Preview */}
         <div className="bg-white rounded-xl border border-gray-100 p-8 shadow-sm flex flex-col items-center gap-5">
           <div className="p-5 bg-white border-2 border-gray-100 rounded-2xl shadow-sm">
-            <svg width={qrSize} height={qrSize} viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="4" y="4" width="32" height="32" rx="3" fill="#1E1E1E"/>
-              <rect x="10" y="10" width="20" height="20" rx="1" fill="white"/>
-              <rect x="14" y="14" width="12" height="12" rx="1" fill="#1E1E1E"/>
-              <rect x="84" y="4" width="32" height="32" rx="3" fill="#1E1E1E"/>
-              <rect x="90" y="10" width="20" height="20" rx="1" fill="white"/>
-              <rect x="94" y="14" width="12" height="12" rx="1" fill="#1E1E1E"/>
-              <rect x="4" y="84" width="32" height="32" rx="3" fill="#1E1E1E"/>
-              <rect x="10" y="90" width="20" height="20" rx="1" fill="white"/>
-              <rect x="14" y="94" width="12" height="12" rx="1" fill="#1E1E1E"/>
-              {/* Data pattern */}
-              {Array.from({ length: 48 }, (_, i) => {
-                const col = Math.floor(i / 8);
-                const row = i % 8;
-                const x = 44 + col * 6;
-                const y = 4 + row * 6;
-                const skip = (x < 44 || x > 116) || (y > 40 && y < 84 && x < 44);
-                if (skip || (i * 7 + 13) % 3 === 0) return null;
-                return <rect key={i} x={x} y={y} width="5" height="5" rx="0.5" fill="#1E1E1E" />;
-              })}
-              {Array.from({ length: 32 }, (_, i) => {
-                const col = i % 7;
-                const row = Math.floor(i / 7);
-                const x = 4 + col * 6;
-                const y = 44 + row * 6;
-                if ((i * 3 + 7) % 2 === 0) return null;
-                return <rect key={`b${i}`} x={x} y={y} width="5" height="5" rx="0.5" fill="#1E1E1E" />;
-              })}
-              <rect x="50" y="50" width="20" height="20" rx="4" fill="#6C63FF"/>
-              <text x="60" y="64" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">ES</text>
-            </svg>
+            <PortfolioQrCode url={url} size={qrSize} />
           </div>
           <div className="text-center">
             <div className="font-semibold text-[#1E1E1E] text-sm mb-1">{p.name}</div>
-            <div className="text-xs text-gray-400 font-mono">eventsnap.ai/p/{p.slug}</div>
+            <div className="text-xs text-gray-400 font-mono break-all">{displayUrl(url)}</div>
           </div>
         </div>
 
@@ -85,11 +59,11 @@ export function QRCodePage() {
             </div>
 
             <div className="grid grid-cols-2 gap-3 pt-1">
-              <button className="flex items-center justify-center gap-2 py-2.5 bg-[#6C63FF] text-white rounded-lg text-sm font-medium hover:bg-[#5B52EE] transition-colors">
+              <button onClick={() => downloadQr(url, { slug: p.slug, format, px: qrSize }).catch(() => alert("Download failed"))} className="flex items-center justify-center gap-2 py-2.5 bg-[#6C63FF] text-white rounded-lg text-sm font-medium hover:bg-[#5B52EE] transition-colors">
                 <Download size={14} />
                 Download QR
               </button>
-              <button className="flex items-center justify-center gap-2 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
+              <button onClick={() => shareQrLink(url, p.name)} className="flex items-center justify-center gap-2 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
                 <Share2 size={14} />
                 Share
               </button>

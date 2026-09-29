@@ -17,7 +17,7 @@ export function PricingManagement() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold text-[#1E1E1E]">Pricing</h2>
           <p className="text-gray-500 text-sm mt-0.5">Manage your photography packages and pricing</p>
@@ -27,7 +27,7 @@ export function PricingManagement() {
           Add Package
         </button>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 @max-[700px]:grid-cols-1 gap-5">
         {packages.map(pkg => (
           <div key={pkg.id} className={`bg-white rounded-xl border-2 p-5 shadow-sm relative ${pkg.popular ? 'border-[#6C63FF]' : 'border-gray-100'}`}>
             {pkg.popular && (
