@@ -43,4 +43,28 @@ export const getToken = () => {
   return localStorage.getItem("token");
 };
 
-export const isLoggedIn = () => !!getToken();
+// Reads the JWT's "exp" claim (seconds) without verifying it — the backend
+// still verifies every request; this only stops an expired token from
+// opening protected pages. Returns null when the token isn't a readable JWT.
+const tokenExpiry = (token) => {
+  try {
+    const payload = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const { exp } = JSON.parse(atob(payload));
+    return typeof exp === "number" ? exp * 1000 : Infinity;
+  } catch {
+    return null;
+  }
+};
+
+// True only for a present, well-formed, unexpired token. A stale token is
+// dropped so every guard (and the next login) starts from a clean session.
+export const isLoggedIn = () => {
+  const token = getToken();
+  if (!token) return false;
+  const expiry = tokenExpiry(token);
+  if (expiry === null || expiry <= Date.now()) {
+    clearSession();
+    return false;
+  }
+  return true;
+};

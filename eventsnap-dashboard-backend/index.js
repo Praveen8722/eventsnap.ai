@@ -12,6 +12,8 @@ import invoiceRoutes from "./src/routes/invoiceRoutes.js";
 import inquiryRoutes from "./src/routes/inquiryRoutes.js";
 import portfolioRoutes from "./src/routes/portfolioRoutes.js";
 import { verifyEmailTransport } from "./src/services/emailservice.js";
+import { migrateLegacyPhotos } from "./src/services/accountPhotoStorage.js";
+import { migrateLegacyPortfolioPhotos } from "./src/services/portfolioPhotoStorage.js";
 
 dotenv.config();
 
@@ -69,5 +71,12 @@ mongoose
     );
     // Logs whether Portfolio inquiry emails can actually be sent.
     verifyEmailTransport();
+    // Moves profile/business and portfolio photos still on disk into MongoDB.
+    migrateLegacyPhotos().catch((error) =>
+      console.error("Account photo migration failed:", error.message)
+    );
+    migrateLegacyPortfolioPhotos().catch((error) =>
+      console.error("Portfolio photo migration failed:", error.message)
+    );
   })
   .catch(console.error);

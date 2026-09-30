@@ -1,10 +1,15 @@
 import crypto from "node:crypto";
-import fs from "fs";
-import path from "path";
 import Portfolio from "../models/Portfolio.js";
 import User from "../models/User.js";
 import STARTER_PORTFOLIO from "../data/starterPortfolio.js";
-import { PORTFOLIO_UPLOAD_DIR } from "../middleware/uploadPortfolio.js";
+import {
+  PHOTO_FIELDS as STORED_PHOTO_FIELDS,
+  isStoredPortfolioPhoto,
+  isOwnPortfolioPhoto,
+  storedPhotoUrls,
+  removeUnreferencedPhotos,
+  discardPhotos,
+} from "../services/portfolioPhotoStorage.js";
 
 // Fields a photographer may change through Edit Portfolio / the section pages.
 const EDITABLE_FIELDS = [
@@ -99,6 +104,23 @@ export const getMyPortfolio = async (req, res) => {
   }
 };
 
+// Server-stored Gallery tab photos are added and removed only through their
+// own endpoints (POST /me/gallery, DELETE /me/gallery/:photoId). A portfolio
+// save may reorder them or change their category/caption, but can't drop or
+// invent one — so a stale save from the page can never lose (and delete) a
+// photo that was just uploaded, or point at one that was deleted.
+const mergeGallery = (current, incoming) => {
+  const serverItems = current
+    .filter((g) => isStoredPortfolioPhoto(g.url))
+    .map((g) => (g.toObject ? g.toObject() : g));
+  const serverUrls = new Set(serverItems.map((g) => g.url));
+  const kept = incoming.filter(
+    (g) => !isStoredPortfolioPhoto(g?.url) || serverUrls.has(g.url)
+  );
+  const keptUrls = new Set(kept.map((g) => g?.url));
+  return [...serverItems.filter((g) => !keptUrls.has(g.url)), ...kept];
+};
+
 // ================= UPDATE MY PORTFOLIO =================
 export const updateMyPortfolio = async (req, res) => {
   try {
@@ -106,6 +128,7 @@ export const updateMyPortfolio = async (req, res) => {
     if (!portfolio) {
       return res.status(404).json({ message: "Portfolio not found" });
     }
+    const photosBefore = [...storedPhotoUrls(portfolio)];
 
     // Slug is handled separately so uniqueness can be enforced.
     if (req.body.slug !== undefined) {
@@ -126,7 +149,21 @@ export const updateMyPortfolio = async (req, res) => {
 
     for (const key of EDITABLE_FIELDS) {
       if (req.body[key] === undefined) continue;
-      if (key === "social" || key === "settings") {
+      if (STORED_PHOTO_FIELDS.includes(key)) {
+        // A stored photo can only be set if it's this user's own, existing
+        // one — e.g. a stale save must not bring back a deleted photo.
+        const next = req.body[key];
+        if (
+          next !== portfolio[key] &&
+          isStoredPortfolioPhoto(next) &&
+          !(await isOwnPortfolioPhoto(next, req.userId))
+        ) {
+          continue;
+        }
+        portfolio[key] = next;
+      } else if (key === "gallery" && Array.isArray(req.body.gallery)) {
+        portfolio.gallery = mergeGallery(portfolio.gallery, req.body.gallery);
+      } else if (key === "social" || key === "settings") {
         const current = portfolio[key]?.toObject
           ? portfolio[key].toObject()
           : portfolio[key] || {};
@@ -137,6 +174,9 @@ export const updateMyPortfolio = async (req, res) => {
     }
 
     await portfolio.save();
+    // A photo replaced or cleared by this save (e.g. a preset chosen instead
+    // of an uploaded photo) is deleted from storage.
+    await removeUnreferencedPhotos(photosBefore, portfolio, req.userId);
     res.status(200).json({ success: true, portfolio });
   } catch (error) {
     if (error.code === 11000) {
@@ -164,12 +204,14 @@ export const getPublicPortfolio = async (req, res) => {
 };
 
 // ================= ADD GALLERY PHOTOS (Portfolio → Gallery tab) =================
-// Stores uploaded files on disk (same approach as Client Galleries) instead
-// of embedding them as base64 in the Portfolio document, so the document
-// stays small and photos are served efficiently via /uploads.
+// The files are already stored in MongoDB GridFS (middleware/uploadPortfolio.js)
+// instead of being embedded as base64 in the Portfolio document, so the
+// document stays small and only keeps each photo's
+// "/api/portfolio/photos/<id>" url.
 export const addPortfolioGalleryPhotos = async (req, res) => {
+  const files = req.files || [];
+  const urls = files.map((f) => f.url);
   try {
-    const files = req.files || [];
     if (!files.length) {
       return res.status(400).json({
         success: false,
@@ -179,13 +221,14 @@ export const addPortfolioGalleryPhotos = async (req, res) => {
 
     const portfolio = await Portfolio.findOne({ user: req.userId });
     if (!portfolio) {
+      await discardPhotos(urls);
       return res.status(404).json({ message: "Portfolio not found" });
     }
 
     const category = String(req.body.category || "Uploads").trim() || "Uploads";
     const newItems = files.map((f) => ({
       id: crypto.randomUUID(),
-      url: `/uploads/portfolio/${f.filename}`,
+      url: f.url,
       category,
       caption: f.originalname || "",
     }));
@@ -196,33 +239,27 @@ export const addPortfolioGalleryPhotos = async (req, res) => {
 
     res.status(200).json({ success: true, portfolio });
   } catch (error) {
+    await discardPhotos(urls);
     res.status(500).json({ message: error.message || "Server Error" });
   }
 };
 
 // ================= UPLOAD PROFILE / COVER / NAVBAR PHOTO (Edit Portfolio) =================
-// Stored on disk like gallery photos, so the Portfolio document only keeps a
-// short "/uploads/portfolio/x.jpg" path instead of a large base64 data URL.
+// Stored in MongoDB GridFS like gallery photos, so the Portfolio document only
+// keeps a short "/api/portfolio/photos/<id>" url instead of a large base64
+// data URL.
 const PHOTO_FIELDS = {
   profile: "profilePhoto",
   cover: "coverImage",
   navbar: "navbarPhoto",
 };
 
-// Only ever remove a file this server created for a portfolio photo.
-const removePortfolioUpload = (url) => {
-  if (typeof url === "string" && url.startsWith("/uploads/portfolio/")) {
-    fs.promises
-      .unlink(path.join(PORTFOLIO_UPLOAD_DIR, path.basename(url)))
-      .catch(() => {});
-  }
-};
-
 export const uploadPortfolioPhoto = async (req, res) => {
   const field = PHOTO_FIELDS[req.params.kind];
+  const url = req.file?.url;
   try {
     if (!field) {
-      if (req.file) removePortfolioUpload(`/uploads/portfolio/${req.file.filename}`);
+      if (url) await discardPhotos([url]);
       return res.status(400).json({ success: false, message: "Unknown photo type" });
     }
     if (!req.file) {
@@ -231,19 +268,20 @@ export const uploadPortfolioPhoto = async (req, res) => {
 
     const portfolio = await Portfolio.findOne({ user: req.userId });
     if (!portfolio) {
-      removePortfolioUpload(`/uploads/portfolio/${req.file.filename}`);
+      await discardPhotos([url]);
       return res.status(404).json({ message: "Portfolio not found" });
     }
 
     const previous = portfolio[field];
-    const url = `/uploads/portfolio/${req.file.filename}`;
     portfolio[field] = url;
     await portfolio.save();
-    // The replaced photo is no longer referenced by this field.
-    if (previous !== url) removePortfolioUpload(previous);
+    // The replaced photo is deleted from storage (unless still used elsewhere
+    // in the portfolio).
+    await removeUnreferencedPhotos([previous], portfolio, req.userId);
 
     res.status(200).json({ success: true, url, portfolio });
   } catch (error) {
+    if (url) await discardPhotos([url]);
     res.status(500).json({ message: error.message || "Server Error" });
   }
 };
@@ -265,14 +303,9 @@ export const deletePortfolioGalleryPhoto = async (req, res) => {
     portfolio.gallery = portfolio.gallery.filter((g) => g.id !== photoId);
     await portfolio.save();
 
-    // Only ever remove a file this endpoint actually created — seeded/legacy
-    // gallery entries (an Unsplash id, a base64 data URL) have nothing on disk.
-    if (photo.url && photo.url.startsWith("/uploads/portfolio/")) {
-      const filename = path.basename(photo.url);
-      fs.promises
-        .unlink(path.join(PORTFOLIO_UPLOAD_DIR, filename))
-        .catch(() => {});
-    }
+    // Delete the stored photo too. Seeded/legacy gallery entries (an Unsplash
+    // id, a base64 data URL) have nothing stored, so they're skipped.
+    await removeUnreferencedPhotos([photo.url], portfolio, req.userId);
 
     res.status(200).json({ success: true, portfolio });
   } catch (error) {

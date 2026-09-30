@@ -13,6 +13,7 @@ import {
 } from "../controllers/authController.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
 import { uploadProfilePhoto } from "../middleware/uploadProfile.js";
+import { streamPhoto } from "../services/accountPhotoStorage.js";
 
 const router = express.Router();
 router.post("/signup", signup);
@@ -24,8 +25,10 @@ router.put("/change-password", authMiddleware, changePassword);
 router.delete("/delete-account", authMiddleware, deleteAccount);
 
 // Signed-in user's own profile photo. authMiddleware runs first, so an
-// unauthenticated request never writes a file to disk.
+// unauthenticated request never stores a photo.
 router.put("/profile-photo", authMiddleware, uploadProfilePhoto, updateProfilePhoto);
+// Serves a stored profile/business photo (public: <img> can't send the JWT).
+router.get("/photos/:fileId", streamPhoto);
 router.delete("/profile-photo", authMiddleware, deleteProfilePhoto);
 router.put("/business-photo", authMiddleware, uploadProfilePhoto, updateBusinessPhoto);
 router.delete("/business-photo", authMiddleware, deleteBusinessPhoto);

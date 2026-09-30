@@ -1,26 +1,20 @@
 import multer from "multer";
-import fs from "fs";
 import path from "path";
 
-// Profile and business photos are stored on the server disk and served statically from
-// /uploads, exactly like Client Gallery and Portfolio photos (see
-// uploadGallery.js / uploadPortfolio.js) — in their own subfolder. The User
-// record only keeps the resulting URL.
+// Profile and business photos are kept in memory here and then stored in
+// MongoDB by services/accountPhotoStorage.js — never on the server's disk,
+// which is wiped on every container restart. The User record only keeps the
+// resulting URL.
+//
+// Folder of photos uploaded before that change ("/uploads/profile/<file>");
+// only read to move them into MongoDB, and to clean them up.
 export const PROFILE_UPLOAD_DIR = path.join(
   process.cwd(),
   "uploads",
   "profile"
 );
-fs.mkdirSync(PROFILE_UPLOAD_DIR, { recursive: true });
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, PROFILE_UPLOAD_DIR),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `${unique}${ext}`);
-  },
-});
+const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
   if (file.mimetype && file.mimetype.startsWith("image/")) {

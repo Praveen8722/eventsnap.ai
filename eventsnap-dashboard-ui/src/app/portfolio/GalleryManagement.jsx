@@ -11,11 +11,13 @@ import {
 
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
-// Photos uploaded through this page are stored on the server (like Client
-// Galleries) and come back with a "/uploads/portfolio/..." path. A seeded
-// starter-content image is just an Unsplash id instead.
+// Photos uploaded through this page are stored on the server (in MongoDB)
+// and come back with a "/api/portfolio/photos/<id>" path (older ones:
+// "/uploads/portfolio/..."). A seeded starter-content image is just an
+// Unsplash id instead.
 const isServerUpload = (img) =>
-  typeof img.url === 'string' && img.url.startsWith('/uploads/portfolio/');
+  typeof img.url === 'string' &&
+  (img.url.startsWith('/api/portfolio/photos/') || img.url.startsWith('/uploads/portfolio/'));
 
 // The resolved <img src> for a gallery item, whatever its source: a
 // server-stored upload, a legacy base64 upload (from before this photo
@@ -41,8 +43,8 @@ export function GalleryManagement() {
 
   const openPicker = () => inputRef.current?.click();
 
-  // Upload each chosen file to the backend, which stores it on disk (same
-  // approach as Client Galleries) and returns the updated portfolio.
+  // Upload each chosen file to the backend, which stores it in MongoDB and
+  // returns the updated portfolio.
   const handleFiles = async (e) => {
     const picked = Array.from(e.target.files || []).filter(
       (f) => f.type.startsWith('image/') && f.size <= MAX_UPLOAD_BYTES,

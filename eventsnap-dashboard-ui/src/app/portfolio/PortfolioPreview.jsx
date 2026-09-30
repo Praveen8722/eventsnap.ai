@@ -1061,7 +1061,7 @@ function PublicServices({ isMobile }) {
 const CATS = ["All", "Wedding", "Portrait", "Corporate", "Events"];
 
 // Gallery photos come from three possible sources: uploaded through this app
-// (stored on the server, url like "/uploads/portfolio/x.jpg"), a legacy
+// (stored on the server, url like "/api/portfolio/photos/<id>"), a legacy
 // base64 upload from before photos were moved server-side (isLocal, url is
 // already a ready-to-use data URL), or seeded starter content (just an
 // Unsplash id that needs the host prefix). Returns undefined when there is no
@@ -1070,7 +1070,7 @@ const CATS = ["All", "Wedding", "Portrait", "Corporate", "Events"];
 const galleryImageSrc = (img, params) => {
   if (!img || !img.url) return undefined;
   if (img.isLocal) return img.url;
-  if (img.url.startsWith("/uploads/")) return portfolioAssetUrl(img.url);
+  if (img.url.startsWith("/")) return portfolioAssetUrl(img.url);
   return `https://images.unsplash.com/${img.url}?${params}`;
 };
 

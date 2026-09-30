@@ -172,7 +172,8 @@ function PhotoUploadCard({ src, label, kind, onSelect }) {
   const inputRef = useRef(null);
 
   // The file is stored on the server (a base64 data URL is too large for the
-  // portfolio save); only its saved "/uploads/..." url goes into the portfolio.
+  // portfolio save); only its saved "/api/portfolio/photos/..." url goes into
+  // the portfolio.
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = "";

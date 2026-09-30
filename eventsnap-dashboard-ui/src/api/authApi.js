@@ -41,9 +41,10 @@ export const deleteBusinessPhoto = async () => {
   return await api.delete(`${API}/business-photo`);
 };
 
-// Stored profile photo path ("/uploads/profile/x.jpg") -> absolute URL.
+// Stored photo path ("/api/auth/photos/<id>", or a legacy
+// "/uploads/profile/x.jpg") -> absolute URL on the backend.
 export const profilePhotoUrl = (photo) =>
-  photo ? (photo.startsWith("/uploads/") ? `${API_ORIGIN}${photo}` : photo) : "";
+  photo ? (photo.startsWith("/") ? `${API_ORIGIN}${photo}` : photo) : "";
 
 export const changePassword = async (data) => {
   return await api.put(`${API}/change-password`, data);

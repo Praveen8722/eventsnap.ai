@@ -3,3 +3,6 @@
 .DS_Store
 .env
 .env.local
+
+# Uploaded photos — stored in MongoDB GridFS, never in Git.
+uploads/

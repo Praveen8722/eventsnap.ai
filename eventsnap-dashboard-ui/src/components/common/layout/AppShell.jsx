@@ -1,8 +1,10 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import Sidebar from "@/components/common/layout/Sidebar";
 import Navbar from "@/components/common/layout/Navbar";
+import { isLoggedIn } from "@/lib/session";
 
 // Routes that render on their own, without the app chrome (Sidebar + Navbar).
 const AUTH_ROUTES = ["/login", "/signup"];
@@ -14,16 +16,56 @@ const BARE_ROUTES = ["/p", "/g"];
 const BARE_PREFIXES = ["/g/", "/p/"];
 
 export default function AppShell({ children }) {
+  const router = useRouter();
   // The GitHub Pages build uses trailing slashes (/login/); match either form.
   const pathname = usePathname()?.replace(/(.)\/$/, "$1");
 
-  if (
+  const isPublic =
     AUTH_ROUTES.includes(pathname) ||
     BARE_ROUTES.includes(pathname) ||
-    BARE_PREFIXES.some((prefix) => pathname?.startsWith(prefix))
-  ) {
+    BARE_PREFIXES.some((prefix) => pathname?.startsWith(prefix));
+
+  // Every other route (dashboard and all app pages, including ones reached by
+  // direct URL or a refresh) is gated here, before the Sidebar/Navbar mount
+  // and start calling authenticated APIs. localStorage only exists
+  // client-side, so the check runs after mount and nothing renders until it
+  // passes.
+  const [authed, setAuthed] = useState(false);
+
+  useEffect(() => {
+    if (isPublic) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAuthed(false);
+      return;
+    }
+    const check = () => {
+      if (isLoggedIn()) {
+        setAuthed(true);
+      } else {
+        setAuthed(false);
+        router.replace("/login");
+      }
+    };
+    check();
+    // Re-check when the session changes in another tab (logout/login there),
+    // when this tab's session is updated, and when the page is restored from
+    // the browser's back/forward cache after a logout.
+    const onPageShow = (e) => e.persisted && check();
+    window.addEventListener("storage", check);
+    window.addEventListener("eventsnap-user-updated", check);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      window.removeEventListener("storage", check);
+      window.removeEventListener("eventsnap-user-updated", check);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, [isPublic, pathname, router]);
+
+  if (isPublic) {
     return <>{children}</>;
   }
+
+  if (!authed) return null;
 
   return (
     <section className="flex">

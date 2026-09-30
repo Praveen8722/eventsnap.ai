@@ -8,7 +8,7 @@ import { HiOutlineSearch } from "react-icons/hi";
 import { IoMdNotificationsOutline } from "react-icons/io";
 import { IoSettingsOutline } from "react-icons/io5";
 import { profilePhotoUrl } from "@/api/authApi";
-import { refreshSessionUser } from "@/lib/session";
+import { clearSession, refreshSessionUser } from "@/lib/session";
 import {
   loadNotifications,
   unreadCountFrom,
@@ -289,10 +289,10 @@ const Navbar = () => {
                     const shouldLogout = window.confirm("Are you sure you want to logout?");
                     if (!shouldLogout) return;
                     setProfileMenuOpen(false);
-                    localStorage.removeItem("token");
-                    localStorage.removeItem("user");
+                    clearSession();
+                    // replace, not push: Back must not return to a protected page.
+                    router.replace("/login");
                     window.dispatchEvent(new CustomEvent("eventsnap-user-updated", { detail: null }));
-                    router.push("/login");
                   }}
                   className="block w-full px-4 py-3 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"
                 >

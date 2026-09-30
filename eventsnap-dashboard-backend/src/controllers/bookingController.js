@@ -1,19 +1,37 @@
 import Booking from "../models/Booking.js";
 import Portfolio from "../models/Portfolio.js";
+import Gallery from "../models/Gallery.js";
+import Invoice from "../models/Invoice.js";
+import Event from "../models/Event.js";
 import { ensureGalleryForBooking } from "./galleryController.js";
 import { isValidPhoneNumber } from "../utils/phone.js";
+
+const bookingNumber = (bookingId) =>
+  parseInt(String(bookingId || "").replace(/[^0-9]/g, ""), 10);
 
 // Next "BK00N" id, based on the most recently created booking for this
 // photographer only. Booking ids are independent per owner, just like
 // gallery ids (see galleryController.nextGalleryId).
+//
+// Deleted bookings leave their galleries, invoices and events behind, still
+// pointing at the old id — so an id is never handed out again while any of
+// those records reference it (e.g. a new booking must not inherit a deleted
+// booking's client gallery via ensureGalleryForBooking).
 const nextBookingId = async (userId) => {
   const last = await Booking.findOne({ user: userId })
     .sort({ createdAt: -1 })
     .select("bookingId");
   let next = 1;
   if (last && last.bookingId) {
-    const num = parseInt(String(last.bookingId).replace(/[^0-9]/g, ""), 10);
+    const num = bookingNumber(last.bookingId);
     if (!Number.isNaN(num)) next = num + 1;
+  }
+  const referenced = await Promise.all(
+    [Gallery, Invoice, Event].map((Model) => Model.distinct("bookingId", { user: userId }))
+  );
+  for (const id of referenced.flat()) {
+    const num = bookingNumber(id);
+    if (!Number.isNaN(num) && num >= next) next = num + 1;
   }
   return `BK${next.toString().padStart(3, "0")}`;
 };
@@ -312,6 +330,76 @@ export const updateBooking = async (req, res) => {
       success: true,
       message: "Booking updated successfully",
       booking,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ success: false, message: error.message || "Server Error" });
+  }
+};
+
+//================== DELETE BOOKING =================
+// Only ever deletes the logged-in photographer's own booking — the owner
+// filter means another user's bookingId simply isn't found. Linked
+// galleries, invoices and events are left untouched.
+export const deleteBooking = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const booking = await Booking.findOneAndDelete({
+      bookingId,
+      user: req.userId,
+    });
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+    res.status(200).json({
+      success: true,
+      message: "Booking deleted successfully",
+      bookingId,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ success: false, message: error.message || "Server Error" });
+  }
+};
+
+//================== DELETE BOOKINGS (bulk) =================
+// Body: { bookingIds: ["BK001", "BK002", ...] }. Scoped to the logged-in
+// photographer exactly like deleteBooking — ids belonging to anyone else are
+// ignored, never deleted.
+const MAX_BULK_DELETE = 500;
+export const deleteBookings = async (req, res) => {
+  try {
+    const { bookingIds } = req.body;
+    if (
+      !Array.isArray(bookingIds) ||
+      bookingIds.length === 0 ||
+      !bookingIds.every((id) => typeof id === "string" && id.trim())
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "bookingIds must be a non-empty list of booking ids",
+      });
+    }
+    if (bookingIds.length > MAX_BULK_DELETE) {
+      return res.status(400).json({
+        success: false,
+        message: `At most ${MAX_BULK_DELETE} bookings can be deleted at once`,
+      });
+    }
+
+    const result = await Booking.deleteMany({
+      bookingId: { $in: bookingIds.map((id) => id.trim()) },
+      user: req.userId,
+    });
+    res.status(200).json({
+      success: true,
+      message: `${result.deletedCount} booking(s) deleted successfully`,
+      deletedCount: result.deletedCount,
     });
   } catch (error) {
     res

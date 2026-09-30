@@ -24,8 +24,9 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
     // URL of the photographer's own profile photo, e.g.
-    // "/uploads/profile/<file>.jpg". The image itself lives on disk (see
-    // middleware/uploadProfile.js); only this reference is stored here. Set
+    // "/api/auth/photos/<fileId>". The image itself is stored in MongoDB
+    // GridFS (see services/accountPhotoStorage.js); only this reference is
+    // stored here. Set
     // only through /api/auth/profile-photo for the authenticated user.
     profilePhoto: {
       type: String,

@@ -13,8 +13,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { IoMdAdd } from "react-icons/io";
 import { IoSearch } from "react-icons/io5";
-import { FiFilter, FiEye, FiEdit2, FiCheck } from "react-icons/fi";
-import { viewBookings, updateBooking } from "@/api/bookingApi";
+import { FiFilter, FiEye, FiEdit2, FiCheck, FiTrash2 } from "react-icons/fi";
+import { viewBookings, updateBooking, deleteBooking, deleteBookings } from "@/api/bookingApi";
 import Model from "@/components/ui/Model";
 import { whatsAppLink } from "@/lib/whatsapp";
 import { FaWhatsapp } from "react-icons/fa";
@@ -83,6 +83,9 @@ export function Bookings() {
   const [statusMenu, setStatusMenu] = useState(null); // { bookingId, top, left }
   const [statusSaving, setStatusSaving] = useState(false);
   const statusCloseTimer = useRef(null);
+  // Row selection for bulk delete (bookingIds), and whether a delete is in flight.
+  const [selected, setSelected] = useState([]);
+  const [deleting, setDeleting] = useState(false);
 
   const matchesTab = (status) => (TAB_STATUS_MATCHERS[active] ?? (() => true))(status);
   const filtered = bookings.filter((b) => {
@@ -108,6 +111,20 @@ export function Bookings() {
   const currentPage = Math.min(page, totalPages);
   const startIdx = (currentPage - 1) * PAGE_SIZE;
   const paged = filtered.slice(startIdx, startIdx + PAGE_SIZE);
+  // Selection is limited to the rows on screen, so a delete never touches a
+  // booking the photographer can't see; it's cleared when the view changes.
+  const pagedIds = paged.map((b) => b.bookingId);
+  const selectedIds = selected.filter((id) => pagedIds.includes(id));
+  const allSelected = pagedIds.length > 0 && selectedIds.length === pagedIds.length;
+  useEffect(() => {
+    setSelected([]);
+  }, [search, statusFilter, active, currentPage]);
+  const toggleSelected = (bookingId) =>
+    setSelected((prev) =>
+      prev.includes(bookingId) ? prev.filter((id) => id !== bookingId) : [...prev, bookingId]
+    );
+  const toggleSelectAll = () => setSelected(allSelected ? [] : pagedIds);
+
   const pageWindow = (() => {
     const span = 5;
     let start = Math.max(1, currentPage - 2);
@@ -140,6 +157,35 @@ export function Bookings() {
     hasFetched.current = true;
     fetchData();
   }, []);
+
+  // ── Delete (single + bulk) ────────────────────────────────────────────────
+  // The backend only deletes the logged-in photographer's own bookings. The
+  // table is refetched afterwards (also after a failure, to resync).
+  const runDelete = async (request) => {
+    setDeleting(true);
+    try {
+      await request();
+    } catch (error) {
+      alert(error?.response?.data?.message || "Failed to delete booking");
+    } finally {
+      setSelected([]);
+      await fetchData();
+      window.dispatchEvent(new CustomEvent("eventsnap-bookings-updated"));
+      setDeleting(false);
+    }
+  };
+  const handleDelete = (item) => {
+    if (deleting) return;
+    const who = item.clientName ? ` (${item.clientName})` : "";
+    if (!window.confirm(`Delete booking ${item.bookingId}${who}? This cannot be undone.`)) return;
+    runDelete(() => deleteBooking(item.bookingId));
+  };
+  const handleDeleteSelected = () => {
+    if (deleting || selectedIds.length === 0) return;
+    const count = selectedIds.length;
+    if (!window.confirm(`Delete ${count} selected booking${count === 1 ? "" : "s"}? This cannot be undone.`)) return;
+    runDelete(() => deleteBookings(selectedIds));
+  };
 
   // ── Inline status editor ──────────────────────────────────────────────────
   const openStatusMenu = (e, bookingId) => {
@@ -258,9 +304,37 @@ export function Bookings() {
       </div>
 
       <div className="bg-white p-6 rounded-xl shadow-sm border-2 border-gray-200 mt-6 w-full overflow-x-auto cursor-pointer dashboard-card">
+        {selectedIds.length > 0 && (
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <span className="text-sm text-gray-700">{selectedIds.length} selected</span>
+            <button
+              type="button"
+              onClick={handleDeleteSelected}
+              disabled={deleting}
+              className="border border-red-200 text-red-600 hover:bg-red-50 rounded-lg px-4 py-1.5 flex items-center gap-2 text-sm font-medium transition disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <FiTrash2 className="text-base" />
+              {deleting ? "Deleting..." : "Delete Selected"}
+            </button>
+          </div>
+        )}
         <table className="w-full text-sm min-w-[900px]">
           <thead>
             <tr className="text-gray-700 text-[15px]  flex-1 bg-gray-50">
+              <th className="py-2 pl-2 pr-3 text-left w-8">
+                <input
+                  type="checkbox"
+                  aria-label="Select all bookings"
+                  title="Select all"
+                  checked={allSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = selectedIds.length > 0 && !allSelected;
+                  }}
+                  onChange={toggleSelectAll}
+                  disabled={deleting || pagedIds.length === 0}
+                  className="cursor-pointer accent-[#6C63FF] align-middle"
+                />
+              </th>
               <th className="py-2 text-left">Booking ID</th>
               <th className="py-2 text-left">Client Name</th>
               <th className="py-2 text-left">Event Type</th>
@@ -274,6 +348,16 @@ export function Bookings() {
           <tbody>
             {paged.map((item, idx) => (
               <tr key={item.bookingId || idx} className="border-t border-gray-200">
+                <td className="py-5 pl-2 pr-3">
+                  <input
+                    type="checkbox"
+                    aria-label={`Select booking ${item.bookingId}`}
+                    checked={selectedIds.includes(item.bookingId)}
+                    onChange={() => toggleSelected(item.bookingId)}
+                    disabled={deleting}
+                    className="cursor-pointer accent-[#6C63FF] align-middle"
+                  />
+                </td>
                 <td className="py-5 font-medium text-gray-800">{item.bookingId}</td>
                 <td className="py-5 text-gray-700">
                   <div className="flex   flex-col">
@@ -333,6 +417,13 @@ export function Bookings() {
                         <FaWhatsapp size={18} />
                       </a>
                     )}
+                    <FiTrash2
+                      size={16}
+                      title="Delete booking"
+                      aria-label={`Delete booking ${item.bookingId}`}
+                      onClick={() => handleDelete(item)}
+                      className={`transition ${deleting ? "opacity-40 cursor-not-allowed" : "cursor-pointer hover:text-red-500"}`}
+                    />
                   </div>
                 </td>
               </tr>

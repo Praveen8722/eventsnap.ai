@@ -15,15 +15,15 @@ export const getPublicPortfolio = (slug) =>
   api.get(`${BASE}/public/${encodeURIComponent(slug)}`);
 
 // Upload one or more photos to the Portfolio → Gallery tab. Files are stored
-// on the server (same approach as Client Galleries) — the response carries
-// the full, updated portfolio.
+// on the server (in MongoDB) — the response carries the full, updated
+// portfolio.
 export const addPortfolioGalleryPhotos = (formData) =>
   api.post(`${BASE}/me/gallery`, formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
 
 // Upload the profile ("profile") or cover ("cover") photo. Stored on the
-// server; the response carries its saved "/uploads/portfolio/..." url.
+// server; the response carries its saved "/api/portfolio/photos/<id>" url.
 export const uploadPortfolioPhoto = (kind, file) => {
   const formData = new FormData();
   formData.append("photo", file);
@@ -36,7 +36,8 @@ export const uploadPortfolioPhoto = (kind, file) => {
 export const deletePortfolioGalleryPhoto = (photoId) =>
   api.delete(`${BASE}/me/gallery/${encodeURIComponent(photoId)}`);
 
-// Turn a stored portfolio photo path ("/uploads/portfolio/x.jpg") into an
-// absolute URL. A seeded Unsplash id or a full/data URL is left untouched.
+// Turn a stored portfolio photo path ("/api/portfolio/photos/<id>", or a
+// legacy "/uploads/portfolio/x.jpg") into an absolute URL on the backend. A
+// seeded Unsplash id or a full/data URL is left untouched.
 export const portfolioAssetUrl = (url) =>
-  url && url.startsWith("/uploads/") ? `${API_ORIGIN}${url}` : url;
+  url && url.startsWith("/") ? `${API_ORIGIN}${url}` : url;

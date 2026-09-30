@@ -26,3 +26,13 @@ export const getBooking = async (bookingId) => {
 export const updateBooking = async (bookingId, data) => {
   return await api.put(`${API}/${encodeURIComponent(bookingId)}`, data);
 };
+
+// Deletes one of the logged-in photographer's own bookings.
+export const deleteBooking = async (bookingId) => {
+  return await api.delete(`${API}/${encodeURIComponent(bookingId)}`);
+};
+
+// Bulk delete — only the logged-in photographer's own bookings are removed.
+export const deleteBookings = async (bookingIds) => {
+  return await api.post(`${API}/delete-bookings`, { bookingIds });
+};
