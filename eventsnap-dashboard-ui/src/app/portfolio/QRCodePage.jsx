@@ -1,20 +1,32 @@
 "use client";
 
 import { useState } from 'react';
-import { Download, Share2 } from 'lucide-react';
-import { usePortfolioData } from './portfolioStore';
+import { Download, Share2, RefreshCw } from 'lucide-react';
+import { usePortfolioData, usePortfolioDataStore } from './portfolioStore';
 import { PortfolioQrCode } from './PortfolioQrCode';
 import { publicPortfolioUrl, displayUrl, downloadQr, shareQrLink } from '@/lib/portfolioQr';
 
 export function QRCodePage() {
   const p = usePortfolioData();
+  const { regenerateQr, saving } = usePortfolioDataStore();
   const [format, setFormat] = useState('png');
   const [size, setSize] = useState('medium');
 
   const sizeMap = { small: 140, medium: 200, large: 260 };
   const qrSize = sizeMap[size];
-  // This photographer's own live public portfolio URL — what the QR encodes.
-  const url = publicPortfolioUrl(p.slug);
+  // The pinned, permanent URL the QR encodes — unchanged by portfolio edits
+  // (falls back to the live URL until the pin is generated). See portfolioStore.
+  const url = p.qrUrl || publicPortfolioUrl(p.slug);
+
+  // Regenerating repoints the QR at the current public URL and invalidates any
+  // QR already printed/shared — so it's explicit and confirmed.
+  const handleRegenerate = () => {
+    if (saving) return;
+    if (!window.confirm(
+      "Regenerate the QR code? Any QR code you've already shared or printed will stop working and must be replaced."
+    )) return;
+    regenerateQr();
+  };
 
   return (
     <div className="space-y-5">
@@ -68,6 +80,15 @@ export function QRCodePage() {
                 Share
               </button>
             </div>
+
+            <button
+              onClick={handleRegenerate}
+              disabled={saving}
+              className="w-full flex items-center justify-center gap-2 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-60"
+            >
+              <RefreshCw size={14} />
+              {saving ? 'Regenerating...' : 'Regenerate QR'}
+            </button>
           </div>
 
           <div className="bg-[#EEF0FF] rounded-xl p-4 border border-[#6C63FF]/20 cursor-pointer dashboard-card">

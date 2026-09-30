@@ -25,7 +25,7 @@ api.interceptors.request.use((config) => {
 // "Book Now" form) can also 401 for unrelated reasons and must not redirect.
 // Prefixed with the site's base path (only set on the GitHub Pages build).
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
-const AUTH_PAGES = ["/login", "/signup"].map((p) => BASE_PATH + p);
+const AUTH_PAGES = ["/login", "/signup", "/forgot-password"].map((p) => BASE_PATH + p);
 api.interceptors.response.use(
   (res) => res,
   (error) => {

@@ -38,6 +38,16 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    // Ids of notifications this photographer has deleted. Notifications are
+    // derived on the fly (from bookings/galleries/inquiries/profile — see
+    // dashboard-ui lib/notifications.js), so there are no notification rows to
+    // delete; a deleted notification is instead recorded here and filtered out
+    // of the built feed permanently. Owner-scoped: only ever the signed-in
+    // user's own, set through /api/auth/notifications/dismiss.
+    dismissedNotifications: {
+      type: [String],
+      default: [],
+    },
   },
   { timestamps: true }
 );

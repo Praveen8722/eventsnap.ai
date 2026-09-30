@@ -11,10 +11,24 @@ export const login = async (data) => {
   return await api.post(`${API}/login`, data);
 };
 
+// Forgot Password: { email, newPassword, confirmPassword }. Resets the
+// account's password if the email exists — no OTP or reset link. The user
+// then signs in through the normal login flow.
+export const forgotPassword = async (data) => {
+  return await api.post(`${API}/forgot-password`, data);
+};
+
 // Resolves the signed-in photographer's id from the current token — login
 // and signup responses carry only { message, token }, not a user object.
 export const getDashboard = async () => {
   return await api.get(`${API}/dashboard`);
+};
+
+// Permanently delete notifications for the signed-in user. Notifications are
+// derived (no rows), so this records the ids as dismissed server-side; the
+// built feed filters them out. Returns the updated dismissed id list.
+export const dismissNotifications = async (ids) => {
+  return await api.post(`${API}/notifications/dismiss`, { ids });
 };
 
 export const editProfile = async (data) => {

@@ -83,6 +83,94 @@ export const login = async (req, res) => {
   }
 };
 
+// ================= FORGOT PASSWORD =================
+// Self-service reset with no OTP / email link (by request): the user supplies
+// their registered email and a new password, and if that email exists its
+// password hash is replaced. No session is issued — the user then logs in
+// with the new password through the unchanged login flow.
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email, newPassword, confirmPassword } = req.body;
+
+    // Plain strings only — an object like {"$gt": ""} would otherwise be run
+    // as a MongoDB query and match an arbitrary account (same guard as login).
+    if (typeof email !== "string" || typeof newPassword !== "string") {
+      return res
+        .status(400)
+        .json({ message: "Email and new password are required" });
+    }
+    if (newPassword.length < 6) {
+      return res
+        .status(400)
+        .json({ message: "Password must be at least 6 characters" });
+    }
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ message: "Passwords do not match" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res
+        .status(404)
+        .json({ message: "No account found with that email" });
+    }
+
+    // Same hashing as signup / change-password (bcrypt, cost 12).
+    user.password = await bcrypt.hash(newPassword, 12);
+    await user.save();
+
+    res.status(200).json({ message: "Password reset successful" });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// ================= DISMISS NOTIFICATIONS (delete) =================
+// Notifications have no rows of their own — they're derived from the user's
+// bookings/galleries/inquiries/profile (see dashboard-ui lib/notifications.js).
+// "Deleting" one records its id here, on the signed-in user's own record, so
+// the feed filters it out permanently. The underlying booking/gallery/inquiry
+// is never touched. Owner is always req.userId from the JWT.
+const MAX_DISMISSED = 5000;
+export const dismissNotifications = async (req, res) => {
+  try {
+    const { ids } = req.body;
+    // Plain string ids only — nothing else goes into the set.
+    const clean = Array.isArray(ids)
+      ? [...new Set(ids.filter((id) => typeof id === "string" && id.trim()))]
+      : null;
+    if (!clean || clean.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "ids must be a non-empty list of notification ids" });
+    }
+
+    // timestamps:false — deleting a notification must not bump updatedAt, or
+    // the feed would raise a spurious "Profile Updated" notification.
+    const user = await User.findByIdAndUpdate(
+      req.userId,
+      { $addToSet: { dismissedNotifications: { $each: clean } } },
+      { new: true, timestamps: false }
+    ).select("dismissedNotifications");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Keep the set bounded — drop the oldest ids if it ever grows too large.
+    if (user.dismissedNotifications.length > MAX_DISMISSED) {
+      user.dismissedNotifications = user.dismissedNotifications.slice(-MAX_DISMISSED);
+      await user.save();
+    }
+
+    res.status(200).json({
+      message: "Notifications deleted",
+      dismissedNotifications: user.dismissedNotifications,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
 // ================= DASHBOARD (resolve signed-in user) =================
 // Login/signup responses carry only { message, token } — no user object —
 // so the frontend calls this right after to resolve the photographer's own

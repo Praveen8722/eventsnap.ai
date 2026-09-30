@@ -2,6 +2,8 @@ import express from "express";
 import {
   signup,
   login,
+  forgotPassword,
+  dismissNotifications,
   getDashboard,
   editProfile,
   changePassword,
@@ -18,10 +20,14 @@ import { streamPhoto } from "../services/accountPhotoStorage.js";
 const router = express.Router();
 router.post("/signup", signup);
 router.post("/login", login);
+// Public reset: email + new password, no OTP/link (see forgotPassword).
+router.post("/forgot-password", forgotPassword);
 
 // Protected routes
 router.put("/edit-profile", authMiddleware, editProfile);
 router.put("/change-password", authMiddleware, changePassword);
+// Permanently delete (dismiss) notifications for the signed-in user.
+router.post("/notifications/dismiss", authMiddleware, dismissNotifications);
 router.delete("/delete-account", authMiddleware, deleteAccount);
 
 // Signed-in user's own profile photo. authMiddleware runs first, so an

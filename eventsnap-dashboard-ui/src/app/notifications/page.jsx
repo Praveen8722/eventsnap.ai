@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FiDollarSign, FiAlertCircle, FiCalendar, FiCamera, FiCheckCircle, FiMail } from "react-icons/fi";
+import { FiDollarSign, FiAlertCircle, FiCalendar, FiCamera, FiCheckCircle, FiMail, FiTrash2 } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
 import { viewBookings } from "@/api/bookingApi";
 import { getGalleries } from "@/api/galleryApi";
 import { viewInquiries } from "@/api/inquiryApi";
+import { dismissNotifications } from "@/api/authApi";
 import {
   buildNotifications,
   getReadIds,
@@ -72,6 +73,9 @@ export default function NotificationsPage() {
   const [user, setUser] = useState(null);
   const [readIds, setReadIds] = useState([]);
   const [visible, setVisible] = useState(PAGE_SIZE);
+  // Ids selected for deletion, and whether a delete is in flight.
+  const [selected, setSelected] = useState([]);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -184,9 +188,62 @@ export default function NotificationsPage() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisible(PAGE_SIZE);
+    setSelected([]); // selection never carries across tabs
   }, [activeTab]);
 
   const shown = filteredNotifications.slice(0, visible);
+
+  // Selection + delete. Select All covers the notifications currently on
+  // screen; a selected id that scrolls out of view (tab/filter change) is
+  // ignored. Deleting records the ids as dismissed on the signed-in user's
+  // own record (server-side) — it never touches the underlying booking /
+  // gallery / inquiry — then the feed is re-derived without them.
+  const shownIds = shown.map((n) => n.id);
+  const selectedShown = selected.filter((id) => shownIds.includes(id));
+  const allSelected = shownIds.length > 0 && selectedShown.length === shownIds.length;
+
+  const toggleSelect = (id) =>
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  const toggleSelectAll = () => setSelected(allSelected ? [] : shownIds);
+
+  const applyDismiss = async (ids) => {
+    if (!ids.length || deleting) return;
+    setDeleting(true);
+    try {
+      const res = await dismissNotifications(ids);
+      const merged =
+        res.data?.dismissedNotifications ??
+        Array.from(new Set([...(user?.dismissedNotifications || []), ...ids]));
+      // Persist onto the stored user so both this page and the Navbar bell
+      // exclude them (the bell rebuilds its feed from the stored user).
+      try {
+        const stored = JSON.parse(localStorage.getItem("user") || "null") || {};
+        localStorage.setItem("user", JSON.stringify({ ...stored, dismissedNotifications: merged }));
+      } catch {
+        /* ignore storage errors */
+      }
+      setUser((prev) => ({ ...(prev || {}), dismissedNotifications: merged }));
+      setSelected([]);
+    } catch (error) {
+      alert(error?.response?.data?.message || "Failed to delete notification");
+    } finally {
+      setDeleting(false);
+      requestBellRefresh();
+    }
+  };
+
+  const handleDeleteOne = (id) => {
+    if (deleting) return;
+    if (!window.confirm("Delete this notification? This can't be undone.")) return;
+    applyDismiss([id]);
+  };
+
+  const handleDeleteSelected = () => {
+    if (deleting || selectedShown.length === 0) return;
+    const n = selectedShown.length;
+    if (!window.confirm(`Delete ${n} selected notification${n === 1 ? "" : "s"}? This can't be undone.`)) return;
+    applyDismiss(selectedShown);
+  };
 
   if (!authChecked) return null;
 
@@ -221,6 +278,38 @@ export default function NotificationsPage() {
           ))}
         </div>
 
+        {shown.length > 0 && (
+          <div className="flex items-center justify-between mb-4 px-1">
+            <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                aria-label="Select all notifications"
+                checked={allSelected}
+                ref={(el) => {
+                  if (el) el.indeterminate = selectedShown.length > 0 && !allSelected;
+                }}
+                onChange={toggleSelectAll}
+                disabled={deleting}
+                className="accent-[#6C63FF] cursor-pointer"
+              />
+              Select all
+              {selectedShown.length > 0 && (
+                <span className="text-gray-400">({selectedShown.length} selected)</span>
+              )}
+            </label>
+            {selectedShown.length > 0 && (
+              <button
+                onClick={handleDeleteSelected}
+                disabled={deleting}
+                className="flex items-center gap-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50 transition disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <FiTrash2 size={14} />
+                {deleting ? "Deleting..." : `Delete Selected (${selectedShown.length})`}
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="space-y-4">
           {filteredNotifications.length === 0 && (
             <p className="text-gray-400 text-sm text-center py-10">No notifications</p>
@@ -233,6 +322,14 @@ export default function NotificationsPage() {
                 className="flex items-start justify-between p-4 py-6 border border-gray-300 rounded-xl hover:shadow-md transition-shadow bg-white cursor-pointer dashboard-card"
               >
                 <div className="flex items-start gap-3 pb-4">
+                  <input
+                    type="checkbox"
+                    aria-label={`Select notification: ${notification.title}`}
+                    checked={selected.includes(notification.id)}
+                    onChange={() => toggleSelect(notification.id)}
+                    disabled={deleting}
+                    className="mt-3 accent-[#6C63FF] cursor-pointer"
+                  />
                   <div className="mt-1 ">{ICONS[notification.tone]}</div>
                   <div>
                     <h3 className="font-semibold text-gray-800">{notification.title}</h3>
@@ -281,16 +378,27 @@ export default function NotificationsPage() {
                     <span className="text-gray-400 text-xs">{timeAgo(notification.timestamp)}</span>
                   </div>
                 </div>
-                {isRead ? (
-                  <span className="text-sm text-gray-300">Read</span>
-                ) : (
+                <div className="flex items-center gap-3 shrink-0">
+                  {isRead ? (
+                    <span className="text-sm text-gray-300">Read</span>
+                  ) : (
+                    <button
+                      onClick={() => markRead(notification.id)}
+                      className="text-sm text-gray-400 hover:text-purple-500"
+                    >
+                      Mark as read
+                    </button>
+                  )}
                   <button
-                    onClick={() => markRead(notification.id)}
-                    className="text-sm text-gray-400 hover:text-purple-500"
+                    onClick={() => handleDeleteOne(notification.id)}
+                    disabled={deleting}
+                    title="Delete notification"
+                    aria-label={`Delete notification: ${notification.title}`}
+                    className="text-gray-400 hover:text-red-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    Mark as read
+                    <FiTrash2 size={16} />
                   </button>
-                )}
+                </div>
               </div>
             );
           })}

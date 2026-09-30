@@ -267,10 +267,26 @@ export const buildNotifications = (bookings, galleries, user, inquiries = []) =>
     }
   }
 
+  // Notifications the user has permanently deleted (server-side, per user —
+  // see authController.dismissNotifications) are filtered out of the feed, so
+  // a deleted notification never reappears on refresh / another device. The
+  // list comes from the passed user, falling back to the stored user — the
+  // same fallback the signed-in id uses above, so dismissals resolve even when
+  // the caller passes a not-yet-loaded user object.
+  let dismissedList = Array.isArray(user?.dismissedNotifications)
+    ? user.dismissedNotifications
+    : null;
+  if (!dismissedList) {
+    const su = readStoredUser();
+    dismissedList = Array.isArray(su?.dismissedNotifications) ? su.dismissedNotifications : [];
+  }
+  const dismissed = new Set(dismissedList);
+
   // De-duplicate by id, then newest first.
   const seen = new Set();
   return list
     .filter((n) => String(n.userId || "") === ownUserId)
+    .filter((n) => !dismissed.has(n.id))
     .filter((n) => (seen.has(n.id) ? false : (seen.add(n.id), true)))
     .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
 };

@@ -23,6 +23,8 @@ const EDITABLE_FIELDS = [
   "profilePhoto",
   "coverImage",
   "navbarPhoto",
+  // Pinned QR URL — set once / on explicit regenerate (see Portfolio model).
+  "qrUrl",
   "location",
   "serviceArea",
   "phone",

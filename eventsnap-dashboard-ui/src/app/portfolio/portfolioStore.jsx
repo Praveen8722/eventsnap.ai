@@ -16,6 +16,7 @@ import {
 } from "react";
 import { DEFAULT_PORTFOLIO } from "./portfolioData";
 import { getMyPortfolio, updateMyPortfolio } from "@/api/portfolioApi";
+import { publicPortfolioUrl } from "@/lib/portfolioQr";
 
 const PortfolioDataContext = createContext(null);
 
@@ -47,6 +48,9 @@ const BLANK_SHAPE = {
   profilePhoto: "",
   coverImage: "",
   navbarPhoto: "",
+  // Pinned public URL the QR code encodes — generated once, then permanent
+  // (see the one-time pin effect and regenerateQr below).
+  qrUrl: "",
   social: { instagram: "", facebook: "", youtube: "", whatsapp: "" },
   services: [],
   gallery: [],
@@ -140,6 +144,32 @@ export function PortfolioDataProvider({ children }) {
     }
   }, []);
 
+  // The QR code's URL is pinned once and kept permanently. It is generated
+  // the first time the portfolio loads without one, and from then on it never
+  // follows later slug edits — so a QR the photographer has already printed or
+  // shared keeps pointing at the same URL. Editing portfolio content never
+  // regenerates it; only an explicit regenerateQr() does.
+  const qrPinnedRef = useRef(false);
+  useEffect(() => {
+    if (qrPinnedRef.current || !data) return;
+    if (data.qrUrl) {
+      qrPinnedRef.current = true;
+      return;
+    }
+    const url = publicPortfolioUrl(data.slug);
+    if (!url) return; // no slug / window not ready yet — try again next render
+    qrPinnedRef.current = true;
+    save({ ...data, qrUrl: url });
+  }, [data, save]);
+
+  // Explicit "Regenerate QR" — re-pins the QR to the current public URL. This
+  // is the only way the QR changes once created (e.g. to adopt a new slug).
+  const regenerateQr = useCallback(() => {
+    const url = publicPortfolioUrl(dataRef.current?.slug);
+    if (!url) return Promise.resolve({ ok: false });
+    return save({ ...dataRef.current, qrUrl: url });
+  }, [save]);
+
   // Update the shared object now (so every page reflects it immediately) and
   // persist shortly after — used by the always-editing section pages.
   const scheduleSave = useCallback(
@@ -165,6 +195,7 @@ export function PortfolioDataProvider({ children }) {
     setData,
     save,
     scheduleSave,
+    regenerateQr,
     reload: load,
     loading,
     error,
@@ -190,6 +221,7 @@ export function PortfolioDataStaticProvider({ value, children }) {
     setData: () => {},
     save: async () => ({ ok: false }),
     scheduleSave: () => {},
+    regenerateQr: async () => ({ ok: false }),
     reload: () => {},
     loading: false,
     error: null,

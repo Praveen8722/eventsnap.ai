@@ -84,6 +84,14 @@ const portfolioSchema = new mongoose.Schema(
     // Empty means the navbar shows the owner's initials.
     navbarPhoto: { type: String, default: "" },
 
+    // The public URL the portfolio QR code encodes, pinned once and kept
+    // permanently. It is NOT recomputed when the slug later changes, so a QR
+    // the photographer has already printed or shared keeps pointing at the
+    // same URL. Set the first time the QR is shown (when empty) or when the
+    // photographer explicitly regenerates it. Editing portfolio content never
+    // touches it. See eventsnap-dashboard-ui portfolioStore.jsx.
+    qrUrl: { type: String, default: "" },
+
     // Contact
     location: { type: String, default: "" },
     serviceArea: { type: String, default: "" },

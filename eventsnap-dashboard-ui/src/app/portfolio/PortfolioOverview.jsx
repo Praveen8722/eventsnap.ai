@@ -15,10 +15,12 @@ export function PortfolioOverview({ onNavigate }) {
   const [copied, setCopied] = useState(false);
   // The photographer's live, saved portfolio (same source Edit / Preview use).
   const portfolio = usePortfolioData();
-  // What the QR code encodes: this photographer's live public portfolio URL.
-  const qrUrl = publicPortfolioUrl(portfolio.slug);
-  // Same URL for the Public Portfolio card (shown without "https://").
-  const publicUrl = displayUrl(qrUrl);
+  // The Public Portfolio card / copy button show the current live link.
+  const liveUrl = publicPortfolioUrl(portfolio.slug);
+  const publicUrl = displayUrl(liveUrl);
+  // The QR encodes the pinned, permanent URL — unchanged by content/slug edits
+  // (falls back to the live URL until the pin is generated). See portfolioStore.
+  const qrUrl = portfolio.qrUrl || liveUrl;
   // Saved photo URLs (uploads) are used as-is; only seeded Unsplash ids get the host prefix.
   const coverSrc = photoSrc(portfolio.coverImage, 'w=600&h=220&fit=crop&auto=format');
 
@@ -45,7 +47,7 @@ export function PortfolioOverview({ onNavigate }) {
   const pct = Math.round((doneCount / completionItems.length) * 100);
 
   const handleCopy = () => {
-    navigator.clipboard?.writeText(qrUrl).catch(() => {});
+    navigator.clipboard?.writeText(liveUrl).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
