@@ -179,18 +179,21 @@ const Home = () => {
     0
   );
 
-  // ── Real month-over-month trend for each stat card, from this user's own 
-  // bookings only. "—" (not a fabricated percentage) when there's no prior
-  // month to compare against — e.g. a brand new account with no data yet.
-  const monthKey = (value) => {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : `${date.getFullYear()}-${date.getMonth()}`;
-  };
+  // ── Trend for each stat card = how the card's own (cumulative, all-time)
+  // figure has grown since the end of last month, from this user's own bookings
+  // only. Comparing the current total against the total that already existed at
+  // the end of last month keeps the % consistent with the number above it: a
+  // booking made last month and unchanged since reads 0%, not -100%. "—" (not a
+  // fabricated percentage) when there is no prior figure to compare against —
+  // e.g. a brand new account, or the first booking of this month.
   const now = new Date();
-  const thisMonthKey = monthKey(now);
-  const lastMonthKey = monthKey(new Date(now.getFullYear(), now.getMonth() - 1, 1));
-  const thisMonthBookings = allBookings.filter((b) => monthKey(b.createdAt) === thisMonthKey);
-  const lastMonthBookings = allBookings.filter((b) => monthKey(b.createdAt) === lastMonthKey);
+  // Last moment of the previous calendar month (day 0 of this month).
+  const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+  // Bookings that already existed at the end of last month — the prior baseline.
+  const priorBookings = allBookings.filter((b) => {
+    const created = new Date(b.createdAt);
+    return !Number.isNaN(created.getTime()) && created <= endOfLastMonth;
+  });
   const sumPaid = (list) => list.reduce((sum, b) => sum + (Number(b.totalPaid) || 0), 0);
   const sumRemaining = (list) => list.reduce((sum, b) => sum + (Number(b.remaining) || 0), 0);
   const countPending = (list) =>
@@ -211,12 +214,12 @@ const Home = () => {
     down: "text-red-500 bg-red-100",
     neutral: "text-gray-500 bg-gray-100",
   };
-  const totalBookingsTrend = trend(thisMonthBookings.length, lastMonthBookings.length);
-  const upcomingShootsTrend = trend(countUpcoming(thisMonthBookings), countUpcoming(lastMonthBookings));
-  const pendingWorkTrend = trend(countPending(thisMonthBookings), countPending(lastMonthBookings));
-  const completedWorkTrend = trend(countCompleted(thisMonthBookings), countCompleted(lastMonthBookings));
-  const paymentsCollectedTrend = trend(sumPaid(thisMonthBookings), sumPaid(lastMonthBookings));
-  const paymentsPendingTrend = trend(sumRemaining(thisMonthBookings), sumRemaining(lastMonthBookings));
+  const totalBookingsTrend = trend(totalBookings, priorBookings.length);
+  const upcomingShootsTrend = trend(upcomingShoots, countUpcoming(priorBookings));
+  const pendingWorkTrend = trend(pendingWork, countPending(priorBookings));
+  const completedWorkTrend = trend(completedWork, countCompleted(priorBookings));
+  const paymentsCollectedTrend = trend(paymentsCollected, sumPaid(priorBookings));
+  const paymentsPendingTrend = trend(paymentsPending, sumRemaining(priorBookings));
 
   return (
     <div className="mt-4">
