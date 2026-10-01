@@ -3,7 +3,13 @@ import Portfolio from "../models/Portfolio.js";
 import Gallery from "../models/Gallery.js";
 import Invoice from "../models/Invoice.js";
 import Event from "../models/Event.js";
+import User from "../models/User.js";
 import { ensureGalleryForBooking } from "./galleryController.js";
+import {
+  sendBookingClientEmail,
+  sendBookingOwnerEmail,
+  sendPaymentReminderEmail,
+} from "../services/emailservice.js";
 import { isValidPhoneNumber } from "../utils/phone.js";
 
 const bookingNumber = (bookingId) =>
@@ -167,6 +173,38 @@ export const createBooking = async (req, res) => {
     });
 
     await newBooking.save();
+
+    // Booking confirmation emails — fire-and-forget and best-effort, so SMTP
+    // never affects the saved booking or this response. The photographer's
+    // address comes only from the resolved owner account (never the request
+    // body), exactly like inquiryController.
+    const owner = await User.findById(ownerId)
+      .select("name businessName email")
+      .catch(() => null);
+    const photographerName = owner?.name || owner?.businessName || "";
+    // Confirm to the client who booked (their email is optional).
+    const clientEmail = String(newBooking.email || "").trim();
+    if (clientEmail) {
+      sendBookingClientEmail({
+        to: clientEmail,
+        clientName: newBooking.clientName,
+        photographerName,
+        booking: newBooking,
+      }).catch((err) =>
+        console.error("Booking client email failed:", err.message)
+      );
+    }
+    // Notify the photographer for inbound bookings from their public portfolio
+    // (for internal dashboard bookings the owner created it themselves).
+    if (newBooking.source === "portfolio" && owner?.email) {
+      sendBookingOwnerEmail({
+        to: owner.email,
+        photographerName,
+        booking: newBooking,
+      }).catch((err) =>
+        console.error("Booking owner email failed:", err.message)
+      );
+    }
 
     res.status(201).json({
       success: true,
@@ -403,6 +441,74 @@ export const deleteBookings = async (req, res) => {
     });
   } catch (error) {
     res
+      .status(500)
+      .json({ success: false, message: error.message || "Server Error" });
+  }
+};
+
+// ================= SEND PAYMENT REMINDER =================
+// Emails the customer the outstanding-balance reminder for one of the
+// logged-in photographer's own bookings. The booking is looked up scoped to
+// req.userId (the JWT owner), so a photographer can only remind their own
+// clients — this is also what enforces multi-user isolation. The recipient is
+// read from the stored booking record (booking.email), never from the request
+// body. The optional `message` is the photographer-authored body text only.
+//
+// Graceful by design: a customer with no saved email → 400, and an SMTP
+// failure → 502, each with a clear message; neither throws, and nothing about
+// the booking is changed.
+export const sendPaymentReminder = async (req, res) => {
+  try {
+    const bookingId = String(req.params.bookingId || "").trim();
+    const booking = await Booking.findOne({ bookingId, user: req.userId });
+    if (!booking) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Booking not found" });
+    }
+
+    const to = String(booking.email || "").trim();
+    if (!to) {
+      return res.status(400).json({
+        success: false,
+        message: "This customer has no saved email address",
+      });
+    }
+
+    // Photographer name for the message comes from the authenticated owner's
+    // account, never the request body.
+    const owner = await User.findById(req.userId).catch(() => null);
+    const photographerName = owner?.name || owner?.businessName || "";
+
+    const result = await sendPaymentReminderEmail({
+      to,
+      clientName: booking.clientName,
+      photographerName,
+      booking,
+      message: req.body?.message,
+    });
+
+    if (!result?.sent) {
+      // SMTP not configured or the send failed — surface the exact reason in
+      // the server log (not-configured vs send-failed) so it's diagnosable,
+      // and report a safe message to the client without 500ing. "not-configured"
+      // means SMTP_HOST/SMTP_USER/SMTP_PASS are missing from the backend .env.
+      console.warn(
+        `Payment reminder not sent for booking ${bookingId}: ${result?.reason || "unknown"}`
+      );
+      return res.status(502).json({
+        success: false,
+        message:
+          "Could not send the reminder email right now. Please try again later.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Payment reminder sent",
+    });
+  } catch (error) {
+    return res
       .status(500)
       .json({ success: false, message: error.message || "Server Error" });
   }

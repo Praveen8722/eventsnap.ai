@@ -36,3 +36,13 @@ export const deleteBooking = async (bookingId) => {
 export const deleteBookings = async (bookingIds) => {
   return await api.post(`${API}/delete-bookings`, { bookingIds });
 };
+
+// Emails a payment reminder to the customer for one of the logged-in
+// photographer's own bookings. The recipient is resolved server-side from the
+// stored booking record — only the optional message body is sent from here.
+export const sendPaymentReminder = async (bookingId, data = {}) => {
+  return await api.post(
+    `${API}/${encodeURIComponent(bookingId)}/send-reminder`,
+    data
+  );
+};

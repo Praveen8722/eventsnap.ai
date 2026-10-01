@@ -30,7 +30,12 @@ import { useEffect, useRef, useState } from "react";
 import { IoCloseSharp } from "react-icons/io5";
 import { IoMdAdd } from "react-icons/io";
 import { LuUpload } from "react-icons/lu";
-import { createBooking, updateBooking, viewBookings } from "@/api/bookingApi";
+import {
+  createBooking,
+  updateBooking,
+  viewBookings,
+  sendPaymentReminder,
+} from "@/api/bookingApi";
 import { createInvoice, updateInvoice } from "@/api/invoiceApi";
 import { createEvent } from "@/api/eventApi";
 import { createGallery } from "@/api/galleryApi";
@@ -698,9 +703,15 @@ const Model = ({
     }
     busyRef.current = true;
     try {
-      // No dedicated payment-reminder endpoint exists on the backend yet —
-      // see the identical gap on the Payments page's bulk "Send Payment
-      // Reminder" quick action. This simulates the send so the flow completes.
+      // Email (and the email half of "Both") is sent by the backend, which
+      // resolves the customer's address from the stored booking — the message
+      // is the only thing sent from here. SMS has no provider wired up, so that
+      // channel is still simulated (unchanged behaviour).
+      if (channel === "email" || channel === "both") {
+        await sendPaymentReminder(booking.bookingId, {
+          message: reminderForm.message,
+        });
+      }
       await onSaved?.();
       onClose();
       alert("Payment reminder sent");

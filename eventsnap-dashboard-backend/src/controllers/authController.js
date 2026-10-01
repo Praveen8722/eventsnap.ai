@@ -2,6 +2,7 @@ import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { savePhoto, removePhoto } from "../services/accountPhotoStorage.js";
+import { sendPasswordResetEmail } from "../services/emailservice.js";
 
 // ================= SIGNUP =================
 export const signup = async (req, res) => { 
@@ -118,6 +119,12 @@ export const forgotPassword = async (req, res) => {
     // Same hashing as signup / change-password (bcrypt, cost 12).
     user.password = await bcrypt.hash(newPassword, 12);
     await user.save();
+
+    // Security confirmation to the account's own email — fire-and-forget, so a
+    // mail failure never fails the reset (sendEmail is best-effort by design).
+    sendPasswordResetEmail({ to: user.email, name: user.name }).catch((err) =>
+      console.error("Password reset email failed:", err.message)
+    );
 
     res.status(200).json({ message: "Password reset successful" });
   } catch (error) {

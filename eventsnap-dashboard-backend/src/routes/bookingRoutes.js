@@ -6,6 +6,7 @@ import {
   updateBooking,
   deleteBooking,
   deleteBookings,
+  sendPaymentReminder,
 } from "../controllers/bookingController.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
 import optionalAuthMiddleware from "../middlewares/optionalAuthMiddleware.js";
@@ -20,6 +21,8 @@ router.post("/create-booking", optionalAuthMiddleware, createBooking);
 // Dashboard-only — always the logged-in photographer's own bookings.
 router.get("/view-bookings", authMiddleware, viewBookings);
 router.post("/delete-bookings", authMiddleware, deleteBookings);
+// Emails the customer a payment reminder for this owner's own booking.
+router.post("/:bookingId/send-reminder", authMiddleware, sendPaymentReminder);
 router.get("/:bookingId", authMiddleware, getBooking);
 router.put("/:bookingId", authMiddleware, updateBooking);
 router.delete("/:bookingId", authMiddleware, deleteBooking);

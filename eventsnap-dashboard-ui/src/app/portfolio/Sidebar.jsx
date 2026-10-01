@@ -14,13 +14,13 @@ export const NAV_ITEMS = [
   { id: 'preview', label: 'Preview', icon: Eye },
   { id: 'gallery', label: 'Gallery', icon: Image },
   // { id: 'services', label: 'Services', icon: Briefcase },
-  // { id: 'pricing', label: 'Pricing', icon: DollarSign },
-  // { id: 'testimonials', label: 'Testimonials', icon: Star },       
+  // { id: 'pricing', label: 'Pricing', icon: DollarSign },     
+  // { id: 'testimonials', label: 'Testimonials', icon: Star },
   // { id: 'faq', label: 'FAQ', icon: HelpCircle },
   { id: 'contact', label: 'Contact Information', icon: Phone },
   { id: 'link', label: 'Portfolio Link', icon: Link2 },
   { id: 'qrcode', label: 'QR Code', icon: QrCode },
-  { id: 'settings', label: 'Portfolio Settings', icon: Settings },  
+  { id: 'settings', label: 'Portfolio Settings', icon: Settings },
 ];
 
 export function Sidebar({ active, setActive, sidebarOpen, setSidebarOpen }) {
