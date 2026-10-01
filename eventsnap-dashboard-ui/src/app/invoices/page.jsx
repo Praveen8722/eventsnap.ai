@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/common/AppLink";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { IoMdAdd } from "react-icons/io";

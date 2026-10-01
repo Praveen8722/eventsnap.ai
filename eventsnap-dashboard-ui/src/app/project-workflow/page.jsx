@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import Link from "@/components/common/AppLink";
 import { BiGridVertical } from "react-icons/bi";
 import { MdOutlineDateRange } from "react-icons/md";
 import { isLoggedIn } from "@/lib/session";

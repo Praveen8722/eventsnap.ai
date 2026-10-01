@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import Link from "@/components/common/AppLink";
 import { TbCamera } from "react-icons/tb";
 import { login } from "@/api/authApi";
 import { establishSession, isLoggedIn } from "@/lib/session";

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import Link from "@/components/common/AppLink";
 import { isLoggedIn } from "@/lib/session";
 import { IoMdAdd } from "react-icons/io";
 import { RxLightningBolt } from "react-icons/rx";

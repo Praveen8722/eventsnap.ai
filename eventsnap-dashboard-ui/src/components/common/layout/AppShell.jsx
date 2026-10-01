@@ -32,6 +32,20 @@ export default function AppShell({ children }) {
   // passes.
   const [authed, setAuthed] = useState(false);
 
+  // The static GitHub Pages export serves one 404.html for every unknown path
+  // (every shared /p/<slug> and /g/<slug> link, handled by not-found.jsx). That
+  // file is prerendered once as the "/_not-found" route, but hydrates under the
+  // visited path — so this component's path-dependent output (public vs gated)
+  // would differ between the server HTML and the first client render and throw
+  // a hydration mismatch (React #418). Gating the first render on `mounted`
+  // makes the server render and the first client render identical (null) for
+  // every route; the real, path-dependent layout is chosen only after mount.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     if (isPublic) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -60,6 +74,10 @@ export default function AppShell({ children }) {
       window.removeEventListener("pageshow", onPageShow);
     };
   }, [isPublic, pathname, router]);
+
+  // Until mounted, the server render and the first client render match (null)
+  // on every path, so the reused 404.html never hydrates into a mismatch.
+  if (!mounted) return null;
 
   if (isPublic) {
     return <>{children}</>;

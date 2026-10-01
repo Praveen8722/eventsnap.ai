@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import Link from "@/components/common/AppLink";
 import { usePathname } from "next/navigation";
 import { MdDashboard, MdPayment } from "react-icons/md";
 import { LuNotebookPen } from "react-icons/lu";

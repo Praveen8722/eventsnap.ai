@@ -25,7 +25,7 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
+import Link from "@/components/common/AppLink";
 import { FaArrowLeft, FaPlus, FaPaperPlane, FaDownload, FaWhatsapp } from "react-icons/fa";
 import { LuPhone, LuEye } from "react-icons/lu";
 import { MdOutlineEmail, MdDateRange } from "react-icons/md";

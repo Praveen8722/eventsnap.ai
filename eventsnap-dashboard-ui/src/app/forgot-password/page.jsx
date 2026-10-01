@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import Link from "@/components/common/AppLink";
 import { TbCamera } from "react-icons/tb";
 import { forgotPassword } from "@/api/authApi";
 import { isLoggedIn } from "@/lib/session";
