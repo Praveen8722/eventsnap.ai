@@ -157,7 +157,14 @@ export default function PaymentsPage() {
   // ── Stat cards ────────────────────────────────────────────────────────────
   const totalReceived = bookings.reduce((s, b) => s + b.totalPaid, 0);
   const pendingPayments = bookings.reduce((s, b) => s + b.remaining, 0);
-  const advancePayments = bookings.reduce((s, b) => s + b.advance, 0);
+  // "Advance Payments" = advances still standing as a part-payment toward an
+  // unpaid balance. Once a booking is fully paid (nothing remaining) the advance
+  // is no longer outstanding — it's just part of the completed total — so it
+  // contributes ₹0 here. Partially-paid bookings keep their real advance.
+  const advancePayments = bookings.reduce(
+    (s, b) => s + (b.remaining > 0 ? b.advance : 0),
+    0
+  );
   const now = new Date();
   // Money actually received (advance + logged payments) whose date falls in
   // the given calendar month — the basis for both "Collected This Month" and
