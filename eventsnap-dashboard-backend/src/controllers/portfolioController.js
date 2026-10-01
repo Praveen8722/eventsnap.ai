@@ -25,6 +25,8 @@ const EDITABLE_FIELDS = [
   "navbarPhoto",
   // Pinned QR URL — set once / on explicit regenerate (see Portfolio model).
   "qrUrl",
+  // Pinned public portfolio link — set once (see Portfolio model).
+  "publicUrl",
   "location",
   "serviceArea",
   "phone",
@@ -46,13 +48,16 @@ const toSlug = (value) =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 60);
 
-// A slug that isn't already used by another portfolio.
+// A slug not used — now or formerly — by another portfolio. Past slugs are
+// excluded too so a new portfolio can never claim a slug that an old shared
+// link still resolves to (keeps every user's old links pointing at their own
+// portfolio).
 const uniqueSlug = async (base, ignoreId = null) => {
   const root = toSlug(base) || "portfolio";
   for (let i = 0; i < 50; i++) {
     const candidate = i === 0 ? root : `${root}-${i + 1}`;
     const clash = await Portfolio.findOne({
-      slug: candidate,
+      $or: [{ slug: candidate }, { pastSlugs: candidate }],
       ...(ignoreId ? { _id: { $ne: ignoreId } } : {}),
     }).select("_id");
     if (!clash) return candidate;
@@ -136,15 +141,25 @@ export const updateMyPortfolio = async (req, res) => {
     if (req.body.slug !== undefined) {
       const next = toSlug(req.body.slug);
       if (next && next !== portfolio.slug) {
+        // Reject a slug used — now or formerly — by any OTHER portfolio, so a
+        // past slug always keeps resolving to its original owner.
         const taken = await Portfolio.findOne({
-          slug: next,
           _id: { $ne: portfolio._id },
+          $or: [{ slug: next }, { pastSlugs: next }],
         }).select("_id");
         if (taken) {
           return res
             .status(400)
             .json({ message: "That portfolio URL is already taken" });
         }
+        // Keep the old slug resolving to this portfolio (the pinned publicUrl
+        // and any already-shared link keep working). The now-current slug is
+        // never kept in the history (e.g. when reclaiming an own past slug).
+        const previousSlug = portfolio.slug;
+        const history = new Set(portfolio.pastSlugs || []);
+        if (previousSlug) history.add(previousSlug);
+        history.delete(next);
+        portfolio.pastSlugs = [...history];
         portfolio.slug = next;
       }
     }
@@ -193,9 +208,16 @@ export const updateMyPortfolio = async (req, res) => {
 // ================= GET PUBLIC PORTFOLIO BY SLUG =================
 export const getPublicPortfolio = async (req, res) => {
   try {
-    const portfolio = await Portfolio.findOne({
-      slug: req.params.slug,
-    }).select("-user -__v");
+    const slug = req.params.slug;
+    // Resolve by current slug first; fall back to a past slug so a permanent
+    // link (the pinned publicUrl, a printed/shared URL) keeps working after a
+    // slug change. Each slug — current or past — belongs to exactly one
+    // portfolio (enforced on slug change / creation), so this never crosses
+    // users. pastSlugs is not exposed in the public payload.
+    let portfolio = await Portfolio.findOne({ slug }).select("-user -__v -pastSlugs");
+    if (!portfolio) {
+      portfolio = await Portfolio.findOne({ pastSlugs: slug }).select("-user -__v -pastSlugs");
+    }
     if (!portfolio) {
       return res.status(404).json({ message: "Portfolio not found" });
     }
@@ -205,11 +227,18 @@ export const getPublicPortfolio = async (req, res) => {
   }
 };
 
+// The four portfolio gallery categories and the per-category photo cap. The
+// public portfolio shows exactly these categories (PortfolioPreview CATS), and
+// each holds at most MAX_GALLERY_PER_CATEGORY photos.
+const GALLERY_CATEGORIES = ["Wedding", "Portrait", "Corporate", "Events"];
+const MAX_GALLERY_PER_CATEGORY = 3;
+
 // ================= ADD GALLERY PHOTOS (Portfolio → Gallery tab) =================
 // The files are already stored in MongoDB GridFS (middleware/uploadPortfolio.js)
 // instead of being embedded as base64 in the Portfolio document, so the
 // document stays small and only keeps each photo's
-// "/api/portfolio/photos/<id>" url.
+// "/api/portfolio/photos/<id>" url. Each category is capped at
+// MAX_GALLERY_PER_CATEGORY photos (enforced here and in the Gallery UI).
 export const addPortfolioGalleryPhotos = async (req, res) => {
   const files = req.files || [];
   const urls = files.map((f) => f.url);
@@ -221,13 +250,34 @@ export const addPortfolioGalleryPhotos = async (req, res) => {
       });
     }
 
+    const category = String(req.body.category || "").trim();
+    if (!GALLERY_CATEGORIES.includes(category)) {
+      await discardPhotos(urls);
+      return res.status(400).json({
+        success: false,
+        message: `Choose a category: ${GALLERY_CATEGORIES.join(", ")}`,
+      });
+    }
+
     const portfolio = await Portfolio.findOne({ user: req.userId });
     if (!portfolio) {
       await discardPhotos(urls);
       return res.status(404).json({ message: "Portfolio not found" });
     }
 
-    const category = String(req.body.category || "Uploads").trim() || "Uploads";
+    // Enforce the per-category cap. The just-stored files are discarded if the
+    // upload would exceed it, so nothing is orphaned in GridFS.
+    const existingInCategory = (portfolio.gallery || []).filter(
+      (g) => g.category === category
+    ).length;
+    if (existingInCategory + files.length > MAX_GALLERY_PER_CATEGORY) {
+      await discardPhotos(urls);
+      return res.status(400).json({
+        success: false,
+        message: `${category} can have at most ${MAX_GALLERY_PER_CATEGORY} photos (it has ${existingInCategory}). Delete one before adding more.`,
+      });
+    }
+
     const newItems = files.map((f) => ({
       id: crypto.randomUUID(),
       url: f.url,

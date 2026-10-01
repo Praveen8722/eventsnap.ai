@@ -8,8 +8,10 @@ import { publicPortfolioUrl, displayUrl } from '@/lib/portfolioQr';
 export function PortfolioLink() {
   const p = usePortfolioData();
   const [copied, setCopied] = useState(null);
-  // This photographer's live public portfolio — the same URL the QR encodes.
-  const publicUrl = publicPortfolioUrl(p.slug);
+  // The pinned, permanent public portfolio link — unchanged by content/slug
+  // edits (falls back to the live URL until the pin is generated). See
+  // portfolioStore. This is what every Copy/Open/share below uses.
+  const publicUrl = p.publicUrl || publicPortfolioUrl(p.slug);
 
   const handleCopy = (text, key) => {
     navigator.clipboard?.writeText(text).catch(() => {});

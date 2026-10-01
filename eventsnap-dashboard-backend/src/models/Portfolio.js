@@ -92,6 +92,22 @@ const portfolioSchema = new mongoose.Schema(
     // touches it. See eventsnap-dashboard-ui portfolioStore.jsx.
     qrUrl: { type: String, default: "" },
 
+    // The permanent public portfolio link shown/copied/opened on the Portfolio
+    // Link page (and the Overview/Sidebar). Pinned once (when empty) and kept
+    // permanently — it is NOT recomputed when the slug later changes, so a link
+    // already shared keeps resolving to the same URL. Independent of qrUrl.
+    // See eventsnap-dashboard-ui portfolioStore.jsx.
+    publicUrl: { type: String, default: "" },
+
+    // Every slug this portfolio has used before (added when the owner changes
+    // their slug). getPublicPortfolio resolves a request by current slug first,
+    // then by any past slug, so the pinned publicUrl and any link already
+    // shared keep resolving to this same portfolio after a slug change. Each
+    // slug — current or past — belongs to exactly one portfolio: slug changes
+    // and new-portfolio creation reject a slug used (now or formerly) by anyone
+    // else, so a past slug never crosses to another user's portfolio.
+    pastSlugs: { type: [String], default: [], index: true },
+
     // Contact
     location: { type: String, default: "" },
     serviceArea: { type: String, default: "" },

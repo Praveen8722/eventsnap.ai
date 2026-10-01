@@ -51,6 +51,9 @@ const BLANK_SHAPE = {
   // Pinned public URL the QR code encodes — generated once, then permanent
   // (see the one-time pin effect and regenerateQr below).
   qrUrl: "",
+  // Pinned public portfolio link shown/copied/opened on the Portfolio Link
+  // page — generated once, then permanent (see the one-time pin effect below).
+  publicUrl: "",
   social: { instagram: "", facebook: "", youtube: "", whatsapp: "" },
   services: [],
   gallery: [],
@@ -144,22 +147,23 @@ export function PortfolioDataProvider({ children }) {
     }
   }, []);
 
-  // The QR code's URL is pinned once and kept permanently. It is generated
-  // the first time the portfolio loads without one, and from then on it never
-  // follows later slug edits — so a QR the photographer has already printed or
-  // shared keeps pointing at the same URL. Editing portfolio content never
-  // regenerates it; only an explicit regenerateQr() does.
-  const qrPinnedRef = useRef(false);
+  // The QR code's URL (qrUrl) and the public portfolio link (publicUrl) are
+  // each pinned once and kept permanently. They're generated the first time
+  // the portfolio loads without them, and from then on never follow later slug
+  // edits — so a QR or link the photographer has already shared keeps pointing
+  // at the same URL. Editing portfolio content never regenerates them; only an
+  // explicit regenerateQr() re-pins the QR. Existing portfolios created before
+  // a field existed get it filled in automatically on next load.
+  const pinnedRef = useRef(false);
   useEffect(() => {
-    if (qrPinnedRef.current || !data) return;
-    if (data.qrUrl) {
-      qrPinnedRef.current = true;
-      return;
-    }
+    if (pinnedRef.current || !data) return;
     const url = publicPortfolioUrl(data.slug);
     if (!url) return; // no slug / window not ready yet — try again next render
-    qrPinnedRef.current = true;
-    save({ ...data, qrUrl: url });
+    const patch = {};
+    if (!data.qrUrl) patch.qrUrl = url;
+    if (!data.publicUrl) patch.publicUrl = url;
+    pinnedRef.current = true;
+    if (Object.keys(patch).length) save({ ...data, ...patch });
   }, [data, save]);
 
   // Explicit "Regenerate QR" — re-pins the QR to the current public URL. This

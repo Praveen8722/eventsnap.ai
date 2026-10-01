@@ -1293,7 +1293,7 @@ function PublicPricing({ isMobile }) {
               </div>
               <div
                 style={{
-                  fontSize: 36,
+                  fontSize: 30,
                   fontWeight: 800,
                   color: pkg.popular ? t.fPrice : t.nPrice,
                   marginBottom: 4,
@@ -1327,7 +1327,7 @@ function PublicPricing({ isMobile }) {
                       gap: 10,
                       padding: "7px 0",
                       color: pkg.popular ? t.fRow : t.nRow,
-                      fontSize: 13,
+                      fontSize: 14,
                       borderBottom: `1px solid ${pkg.popular ? t.fRowBorder : t.nRowBorder}`,
                     }}
                   >
@@ -1905,9 +1905,11 @@ function PublicContact({ isMobile }) {
                     {[
                       "Wedding",
                       "Pre-Wedding",
+                      "Engagement",
                       "Portrait",
                       "Corporate",
                       "Event",
+                      "Birthday Party",
                       "Fashion",
                     ].map((opt) => (
                       <option key={opt}>{opt}</option>

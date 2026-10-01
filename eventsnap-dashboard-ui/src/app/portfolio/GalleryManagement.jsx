@@ -11,6 +11,12 @@ import {
 
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
+// The four portfolio gallery categories (same as the public portfolio) and the
+// per-category photo cap. Enforced here and on the backend
+// (portfolioController.addPortfolioGalleryPhotos).
+const CATEGORIES = ['Wedding', 'Portrait', 'Corporate', 'Events'];
+const MAX_PER_CATEGORY = 3;
+
 // Photos uploaded through this page are stored on the server (in MongoDB)
 // and come back with a "/api/portfolio/photos/<id>" path (older ones:
 // "/uploads/portfolio/..."). A seeded starter-content image is just an
@@ -36,12 +42,27 @@ export function GalleryManagement() {
   const inputRef = useRef(null);
 
   const gallery = data.gallery;
-  const cats = ['All', ...Array.from(new Set(gallery.map(g => g.category)))];
+  // Fixed category tabs (same as the public portfolio) so every category is
+  // available even when empty; a limit of MAX_PER_CATEGORY applies to each.
+  const cats = ['All', ...CATEGORIES];
   const filtered = filter === 'All' ? gallery : gallery.filter(g => g.category === filter);
+  const countIn = (cat) => gallery.filter((g) => g.category === cat).length;
 
   const toggle = (id) => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
 
-  const openPicker = () => inputRef.current?.click();
+  // Photos are added into the selected category (not "All"), capped at
+  // MAX_PER_CATEGORY. The backend enforces the same cap.
+  const openPicker = () => {
+    if (filter === 'All') {
+      alert('Select a category (Wedding, Portrait, Corporate, or Events) before adding photos.');
+      return;
+    }
+    if (countIn(filter) >= MAX_PER_CATEGORY) {
+      alert(`${filter} already has the maximum of ${MAX_PER_CATEGORY} photos. Delete one to add another.`);
+      return;
+    }
+    inputRef.current?.click();
+  };
 
   // Upload each chosen file to the backend, which stores it in MongoDB and
   // returns the updated portfolio.
@@ -52,11 +73,26 @@ export function GalleryManagement() {
     e.target.value = '';
     if (!picked.length) return;
 
+    // Enforce the per-category cap client-side (the backend enforces it too).
+    if (filter === 'All') {
+      alert('Select a category before adding photos.');
+      return;
+    }
+    const remaining = MAX_PER_CATEGORY - countIn(filter);
+    if (remaining <= 0) {
+      alert(`${filter} already has the maximum of ${MAX_PER_CATEGORY} photos.`);
+      return;
+    }
+    const toUpload = picked.slice(0, remaining);
+    if (picked.length > remaining) {
+      alert(`${filter} can hold ${MAX_PER_CATEGORY} photos — only ${remaining} more added.`);
+    }
+
     setUploading(true);
     try {
       const formData = new FormData();
-      picked.forEach((file) => formData.append('photos', file));
-      formData.append('category', filter === 'All' ? 'Uploads' : filter);
+      toUpload.forEach((file) => formData.append('photos', file));
+      formData.append('category', filter);
       const res = await addPortfolioGalleryPhotos(formData);
       if (res.data?.portfolio) setData(res.data.portfolio);
     } catch (error) {
@@ -68,18 +104,20 @@ export function GalleryManagement() {
 
   const removeUpload = async (img) => {
     setSelected((s) => s.filter((x) => x !== img.id));
-    if (isServerUpload(img)) {
-      try {
-        const res = await deletePortfolioGalleryPhoto(img.id);
-        if (res.data?.portfolio) setData(res.data.portfolio);
-      } catch (error) {
-        alert(error?.response?.data?.message || 'Failed to delete photo');
-      }
-      return;
-    }
-    // Legacy base64 upload — nothing stored server-side to clean up.
+    // Legacy base64 upload — nothing stored server-side; drop it via a save.
     if (img.isLocal) {
       scheduleSave((prev) => ({ ...prev, gallery: prev.gallery.filter((g) => g.id !== img.id) }));
+      return;
+    }
+    // Server-stored uploads and seeded (Unsplash) items both go through the
+    // delete endpoint: it removes the reference and, for a stored upload,
+    // deletes its GridFS file (a seeded item has no stored file to remove).
+    // Deleting is also how a category makes room under the per-category cap.
+    try {
+      const res = await deletePortfolioGalleryPhoto(img.id);
+      if (res.data?.portfolio) setData(res.data.portfolio);
+    } catch (error) {
+      alert(error?.response?.data?.message || 'Failed to delete photo');
     }
   };
 
@@ -135,7 +173,9 @@ export function GalleryManagement() {
         </div>
         {filtered.map(img => {
           const isSelected = selected.includes(img.id);
-          const removable = img.isLocal || isServerUpload(img);
+          // Every gallery photo can be deleted (to manage the category / its
+          // per-category limit); the handler cleans up GridFS for stored ones.
+          const removable = true;
           return (
             <div key={img.id} className="relative group aspect-square rounded-xl overflow-hidden cursor-pointer" onClick={() => toggle(img.id)}>
               <img

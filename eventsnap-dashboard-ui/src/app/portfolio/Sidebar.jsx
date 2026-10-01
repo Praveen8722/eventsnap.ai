@@ -13,10 +13,10 @@ export const NAV_ITEMS = [
   { id: 'edit', label: 'Edit Portfolio', icon: Edit3 },
   { id: 'preview', label: 'Preview', icon: Eye },
   { id: 'gallery', label: 'Gallery', icon: Image },
-  { id: 'services', label: 'Services', icon: Briefcase },
-  { id: 'pricing', label: 'Pricing', icon: DollarSign },
-  { id: 'testimonials', label: 'Testimonials', icon: Star },
-  { id: 'faq', label: 'FAQ', icon: HelpCircle },
+  // { id: 'services', label: 'Services', icon: Briefcase },
+  // { id: 'pricing', label: 'Pricing', icon: DollarSign },
+  // { id: 'testimonials', label: 'Testimonials', icon: Star },
+  // { id: 'faq', label: 'FAQ', icon: HelpCircle },
   { id: 'contact', label: 'Contact Information', icon: Phone },
   { id: 'link', label: 'Portfolio Link', icon: Link2 },
   { id: 'qrcode', label: 'QR Code', icon: QrCode },
@@ -24,7 +24,7 @@ export const NAV_ITEMS = [
 ];
 
 export function Sidebar({ active, setActive, sidebarOpen, setSidebarOpen }) {
-  const { slug } = usePortfolioData();
+  const { slug, publicUrl } = usePortfolioData();
   return (
     // Below 900px of Portfolio width the aside stays a 56px rail and the
     // expanded panel overlays the page instead of squeezing it.
@@ -74,8 +74,9 @@ export function Sidebar({ active, setActive, sidebarOpen, setSidebarOpen }) {
               <p className="text-[10px] opacity-80 mb-2">Your portfolio is public and accepting inquiries.</p>
               <div className="flex items-center gap-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-green-300 animate-pulse" />
-                {/* Same live URL the QR code encodes; long hosts wrap in the card. */}
-                <span className="text-[10px] opacity-90 min-w-0 break-all">{displayUrl(publicPortfolioUrl(slug || 'your-portfolio'))}</span>
+                {/* The pinned, permanent public link (falls back to the live URL
+                    until pinned); long hosts wrap in the card. */}
+                <span className="text-[10px] opacity-90 min-w-0 break-all">{displayUrl(publicUrl || publicPortfolioUrl(slug || 'your-portfolio'))}</span>
               </div>
             </div>
           </div>
