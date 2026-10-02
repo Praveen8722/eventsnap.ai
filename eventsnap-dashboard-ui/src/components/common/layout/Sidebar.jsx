@@ -133,7 +133,7 @@ export default function Sidebar() {
             </Link>
           </li>
 
-          <li>
+          {/* <li>
             <Link
               href="/client-galleries"
               onClick={() => {
@@ -149,9 +149,9 @@ export default function Sidebar() {
                 Client Galleries
               </span>
             </Link>
-          </li>
+          </li> */}
 
-          <li>
+          {/* <li>
             <Link
               href="/invoices"
               onClick={() => setOpenSidebar(false)}
@@ -162,7 +162,7 @@ export default function Sidebar() {
               <LiaFileInvoiceSolid className="text-xl" />
               Invoices
             </Link>
-          </li>
+          </li> */}
 
           <li>
             <Link

@@ -18,18 +18,10 @@ import { LuDollarSign } from "react-icons/lu";
 import { IoArrowForward } from "react-icons/io5";
 import { isLoggedIn } from "@/lib/session";
 import { viewBookings } from "@/api/bookingApi";
+import { STATUS_BADGE, useBookingStatusMenu } from "@/components/common/BookingStatusMenu";
               
 const Model = dynamic(() => import("@/components/ui/Model"));
                          
-const STATUS_BADGE = {
-  Inquiry: "bg-gray-100 text-gray-600",
-  Confirmed: "bg-purple-100 text-purple-700",
-  "In Progress": "bg-blue-100 text-blue-700",     
-  Editing: "bg-orange-100 text-orange-700",
-  "Ready for Delivery": "bg-cyan-100 text-cyan-700",            
-  Delivered: "bg-green-100 text-green-700",                      
-  Cancelled: "bg-red-100 text-red-700",
-};
      
 const formatDate = (value) => {
   if (!value) return "-";
@@ -158,6 +150,18 @@ const Home = () => {
       window.removeEventListener("eventsnap-bookings-updated", handleBookingsUpdated);
     };
   }, []);
+
+  // Inline status editor — same hover menu + updateBooking logic as the
+  // Bookings page. The saved status is applied to both lists locally so the
+  // stat cards update immediately; the shared "eventsnap-bookings-updated"
+  // event then refetches from the server.
+  const { statusMenu, statusSaving, openStatusMenu, scheduleCloseStatusMenu, statusMenuElement } =
+    useBookingStatusMenu(recentBookings, (bookingId, nextStatus) => {
+      const applyStatus = (list) =>
+        list.map((b) => (b.bookingId === bookingId ? { ...b, status: nextStatus } : b));
+      setAllBookings(applyStatus);
+      setRecentBookings(applyStatus);
+    });
 
   const totalBookings = allBookings.length;
   const upcomingShootsList = allBookings.filter(isUpcomingShoot).sort((a, b) => {
@@ -375,13 +379,22 @@ const Home = () => {
                   <td className="py-5 text-gray-600">{item.eventType}</td>
                   <td className="py-5 text-gray-600">{formatDate(item.eventDate)}</td>
                   <td className="py-5">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs ${
-                        STATUS_BADGE[item.status] || "bg-gray-100 text-gray-600"
-                      }`}
+                    <div
+                      className="relative inline-block"
+                      onMouseEnter={(e) => openStatusMenu(e, item.bookingId)}
+                      onMouseLeave={scheduleCloseStatusMenu}
                     >
-                      {item.status}
-                    </span>
+                      <span
+                        title="Hover to change status"
+                        className={`px-3 py-1 rounded-full text-xs cursor-pointer select-none ${
+                          STATUS_BADGE[item.status] || "bg-gray-100 text-gray-600"
+                        } ${
+                          statusSaving && statusMenu?.bookingId === item.bookingId ? "opacity-60" : ""
+                        }`}
+                      >
+                        {item.status}
+                      </span>
+                    </div>
                   </td>
                   <td className="py-5 text-gray-700">{formatAmount(item.packegPrice)}</td>
                 </tr>
@@ -426,6 +439,7 @@ const Home = () => {
       </div>
 
       {modalType && <Model type={modalType} onClose={() => setModalType(null)} />}
+      {statusMenuElement}
     </div>
   );
 };
