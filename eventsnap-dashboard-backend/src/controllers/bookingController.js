@@ -310,6 +310,18 @@ export const updateBooking = async (req, res) => {
       }
       updates.advancePayment = Number(updates.advancePayment);
     }
+    // Payment Details → Add Payment: append one dated payment entry instead
+    // of folding the amount into advancePayment, so it gets its own history
+    // row. The date is always the moment it's added (never from the client).
+    let addPaymentAmount = null;
+    if (req.body.addPayment !== undefined) {
+      addPaymentAmount = Number(req.body.addPayment);
+      if (!Number.isFinite(addPaymentAmount) || addPaymentAmount <= 0) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Payment amount must be a positive number" });
+      }
+    }
     if (updates.status !== undefined && !BOOKING_STATUSES.includes(updates.status)) {
       return res
         .status(400)
@@ -342,6 +354,30 @@ export const updateBooking = async (req, res) => {
         entries.push({ status: updates.status, date: new Date() });
         update.$push = { statusHistory: { $each: entries } };
       }
+    }
+    if (addPaymentAmount !== null) {
+      const current = await Booking.findOne({ bookingId, user: req.userId }).select(
+        "packegPrice advancePayment payments"
+      );
+      if (current) {
+        const paid =
+          (Number(updates.advancePayment ?? current.advancePayment) || 0) +
+          (current.payments || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+        const remaining = Math.max(
+          (Number(updates.packegPrice ?? current.packegPrice) || 0) - paid,
+          0
+        );
+        if (addPaymentAmount > remaining + 0.01) {
+          return res.status(400).json({
+            success: false,
+            message: `Payment exceeds the remaining balance of ₹${remaining.toLocaleString("en-IN")}`,
+          });
+        }
+      }
+      update.$push = {
+        ...update.$push,
+        payments: { amount: addPaymentAmount, date: new Date() },
+      };
     }
 
     const booking = await Booking.findOneAndUpdate(

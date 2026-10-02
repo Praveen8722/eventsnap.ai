@@ -221,7 +221,7 @@ export default function Sidebar() {
             </Link>
           </li>
 
-          <li>
+          {/* <li>
             <Link
               href="/help-support"
               onClick={() => setOpenSidebar(false)}
@@ -232,7 +232,7 @@ export default function Sidebar() {
               <FaHandsHelping className="text-xl" />
               Help & Support
             </Link>
-          </li>
+          </li> */}
         </ul>
       </aside>
     </>

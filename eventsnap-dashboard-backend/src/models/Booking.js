@@ -53,6 +53,19 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       required: false,
     },
+    // Payments added after booking (Payment Details → Add Payment), each with
+    // the date it was actually added. Written only by bookingController's
+    // `addPayment` update (date set server-side). Total paid everywhere is
+    // advancePayment + the sum of these amounts.
+    payments: {
+      type: [
+        {
+          amount: { type: Number, required: true, min: 0 },
+          date: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
     // Optional multi-day schedule for this one booking (e.g. Pooja, Pre-wedding,
     // Wedding on separate, non-consecutive dates). Name and date are required
     // per day; location and notes are optional. When present, eventDate is the

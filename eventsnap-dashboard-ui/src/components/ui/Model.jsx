@@ -18,8 +18,9 @@
 //    model has no payments sub-collection). Recording a payment here instead
 //    folds the amount into `advancePayment` via the existing `updateBooking`
 //    partial update — the same total-paid math every page already falls back
-//    to (advancePayment + payments[].amount, and payments[] is always empty
-//    against the real API).
+//    to (advancePayment + payments[].amount). The inline Payment Details →
+//    Add Payment instead appends a dated entry to the booking's payments[]
+//    (updateBooking `addPayment`), so each one gets its own history row.
 //  - The compiled source posted to a `sendPaymentReminder` booking-API
 //    endpoint that also doesn't exist. There is no reminder-sending
 //    capability anywhere in the current backend (see the identical gap noted
@@ -30,6 +31,7 @@ import { useEffect, useRef, useState } from "react";
 import { IoCloseSharp } from "react-icons/io5";
 import { IoMdAdd } from "react-icons/io";
 import { LuUpload } from "react-icons/lu";
+import { FaWhatsapp } from "react-icons/fa";
 import {
   createBooking,
   updateBooking,
@@ -40,6 +42,7 @@ import { createInvoice, updateInvoice } from "@/api/invoiceApi";
 import { createEvent } from "@/api/eventApi";
 import { createGallery } from "@/api/galleryApi";
 import { isValidPhoneNumber } from "@/lib/phone";
+import { whatsAppLink } from "@/lib/whatsapp";
 
 const methods = [
   { id: "cash", label: "Cash", icon: "💵" },
@@ -688,11 +691,28 @@ const Model = ({
     }
   };
 
-  // ── Send Payment Reminder (Email / SMS / Both) ─────────────────────────
+  // ── Send Payment Reminder (Email / SMS / Both / WhatsApp) ──────────────
   const handleSendReminder = async (e) => {
     e.preventDefault();
     if (!booking?.bookingId || busyRef.current) return;
     const { channel } = reminderForm;
+    // WhatsApp is a free click-to-chat link (no backend call): open a chat
+    // with the customer's saved phone, pre-filled with the reminder message
+    // (which already states the pending amount).
+    if (channel === "whatsapp") {
+      const message =
+        reminderForm.message.trim() ||
+        `Hi ${booking.clientName || ""}, a friendly reminder for your booking ` +
+          `(${booking.bookingId}). Pending amount: ₹${Number(remaining).toLocaleString("en-IN")}.`;
+      const link = whatsAppLink(booking.phone, message);
+      if (!link) {
+        alert("This customer has no valid phone number for WhatsApp");
+        return;
+      }
+      window.open(link, "_blank", "noopener,noreferrer");
+      onClose();
+      return;
+    }
     if ((channel === "email" || channel === "both") && !booking.email) {
       alert("This customer has no saved email address");
       return;
@@ -821,9 +841,10 @@ const Model = ({
   };
 
   // ── Add Payment (inline, inside the Payment Details view) ────────────────
-  // Amount only — no method/reference. Backend has no payments sub-collection,
-  // so this folds the amount into advancePayment (see file header note); Total
-  // Paid / Remaining / Status recompute from the refreshed booking.
+  // Amount only — no method/reference. Saved as its own entry in the
+  // booking's payments[] (dated server-side to the day it's added), so it
+  // shows as a separate Payment History row; the Advance entry is untouched.
+  // Total Paid / Remaining / Status recompute from the refreshed booking.
   const handleAddDetailPayment = async () => {
     if (detailPaymentBusy) return;
     const targetId = booking?.bookingId;
@@ -848,7 +869,7 @@ const Model = ({
     }
     setDetailPaymentBusy(true);
     try {
-      await updateBooking(targetId, { advancePayment: advance + amount });
+      await updateBooking(targetId, { addPayment: amount });
       window.dispatchEvent(new CustomEvent("eventsnap-bookings-updated"));
       window.dispatchEvent(new CustomEvent("eventsnap-invoices-updated"));
       await onSaved?.();
@@ -2096,7 +2117,7 @@ const Model = ({
 
             <div className="w-full">
               <p className="text-sm text-gray-700 mb-3">Send Via *</p>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {[
                   {
                     id: "email",
@@ -2110,6 +2131,12 @@ const Model = ({
                     label: "Both",
                     icon: "📨",
                     ok: !!booking.email && !!booking.phone,
+                  },
+                  {
+                    id: "whatsapp",
+                    label: "WhatsApp",
+                    icon: <FaWhatsapp className="text-[#25D366]" />,
+                    ok: !!whatsAppLink(booking.phone),
                   },
                 ].map((c) => (
                   <button

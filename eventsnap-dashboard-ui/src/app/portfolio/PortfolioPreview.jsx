@@ -1293,7 +1293,7 @@ function PublicPricing({ isMobile }) {
               </div>
               <div
                 style={{
-                  fontSize: 30,
+                  fontSize: 25,
                   fontWeight: 800,
                   color: pkg.popular ? t.fPrice : t.nPrice,
                   marginBottom: 4,
@@ -1327,7 +1327,7 @@ function PublicPricing({ isMobile }) {
                       gap: 10,
                       padding: "7px 0",
                       color: pkg.popular ? t.fRow : t.nRow,
-                      fontSize: 14,
+                      fontSize: 15,
                       borderBottom: `1px solid ${pkg.popular ? t.fRowBorder : t.nRowBorder}`,
                     }}
                   >
@@ -1963,6 +1963,9 @@ function PublicContact({ isMobile }) {
 function PublicCTA({ isMobile }) {
   const p = usePortfolioData();
   const t = useT();
+  // "Book Your Photographer" opens the same New Booking modal as "Book Now".
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const refreshBookings = () => viewBookings().catch(() => {});
   const ctaOverlay =
     t.name === "minimal"
       ? "rgba(255, 255, 255, 0.86)"
@@ -2020,7 +2023,11 @@ function PublicCTA({ isMobile }) {
           Book your session today and preserve your memories forever.
         </p>
         <a
-          href="#contact"
+          // href="#contact"
+          onClick={(e) => {
+            e.preventDefault();
+            setBookingOpen(true);
+          }}
           style={{
             display: "inline-block",
             background: t.accGradWarm,
@@ -2035,6 +2042,16 @@ function PublicCTA({ isMobile }) {
           Book Your Photographer
         </a>
       </div>
+
+      {bookingOpen && (
+        <Model
+          type="newBooking"
+          bookingSource="portfolio"
+          portfolioSlug={p.slug}
+          onClose={() => setBookingOpen(false)}
+          onCreated={refreshBookings}
+        />
+      )}
     </section>
   );
 }
