@@ -17,7 +17,7 @@ import {
 import { isLoggedIn } from "@/lib/session";
 import { whatsAppLink } from "@/lib/whatsapp";
 
-const tabs = ["All", "Unread", "Payments", "Bookings", "Reminders"];
+const tabs = ["All", "Unread", "Payments", "Bookings", "Enquiries", "Reminders"];
 const PAGE_SIZE = 8;
 
 const timeAgo = (value) => {
@@ -181,6 +181,8 @@ export default function NotificationsPage() {
     if (activeTab === "Unread") return !readIds.includes(n.id);
     if (activeTab === "Payments") return n.type === "payment";
     if (activeTab === "Bookings") return n.type === "booking";
+    // Portfolio Contact/Enquiry form submissions (owner-scoped in buildNotifications).
+    if (activeTab === "Enquiries") return n.type === "contact";
     if (activeTab === "Reminders") return n.type === "reminder";
     return true;
   });
