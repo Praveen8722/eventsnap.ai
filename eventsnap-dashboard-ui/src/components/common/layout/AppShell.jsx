@@ -9,11 +9,11 @@ import { isLoggedIn } from "@/lib/session";
 // Routes that render on their own, without the app chrome (Sidebar + Navbar).
 const AUTH_ROUTES = ["/login", "/signup", "/forgot-password"];
 
-// Public portfolio / gallery viewers in their /p?slug= and /g?slug= form.
-const BARE_ROUTES = ["/p", "/g"];
+// Public portfolio / gallery / Create Event share viewers in their ?slug= form.
+const BARE_ROUTES = ["/p", "/g", "/share"];
 
 // Prefixes that also render bare (e.g. the public client gallery viewer).
-const BARE_PREFIXES = ["/g/", "/p/"];
+const BARE_PREFIXES = ["/g/", "/p/", "/share/"];
 
 export default function AppShell({ children }) {
   const router = useRouter();

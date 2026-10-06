@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "@/components/common/AppLink";
 import { usePathname } from "next/navigation";
-import { MdDashboard, MdPayment } from "react-icons/md";
+import { MdDashboard, MdPayment, MdOutlinePhotoLibrary } from "react-icons/md";
 import { LuNotebookPen } from "react-icons/lu";
 import { RiCalendarScheduleLine, RiFolder2Line } from "react-icons/ri";
 import { GrGallery } from "react-icons/gr";
@@ -218,6 +218,19 @@ export default function Sidebar() {
             >
               <RiFolder2Line className="text-xl" />
               Portfolio
+            </Link>
+          </li>
+
+          <li>
+            <Link
+              href="/create-event"
+              onClick={() => setOpenSidebar(false)}
+              className={`flex items-center gap-3 p-4 hover:bg-[#6C63FF] hover:text-white rounded ${
+                isActive("/create-event") ? "bg-[#6C63FF] text-white" : ""
+              }`}
+            >
+              <MdOutlinePhotoLibrary className="text-xl" />
+              Create Event
             </Link>
           </li>
 

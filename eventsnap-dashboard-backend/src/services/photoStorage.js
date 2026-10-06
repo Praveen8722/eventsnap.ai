@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import mongoose from "mongoose";
@@ -24,7 +25,10 @@ const LEGACY_TYPES = {
 const toObjectId = (value) =>
   /^[0-9a-f]{24}$/i.test(String(value)) ? new mongoose.Types.ObjectId(String(value)) : null;
 
-export const createPhotoStore = ({ bucketName, urlPrefix, legacyPrefix, legacyDir }) => {
+// randomIds: give stored files random, unguessable ids (default ObjectIds are
+// a timestamp + counter, so a photo's neighbours can be guessed from its URL).
+// Opt-in, so stores that don't set it behave exactly as before.
+export const createPhotoStore = ({ bucketName, urlPrefix, legacyPrefix, legacyDir, randomIds = false }) => {
   const bucket = () =>
     new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName });
 
@@ -37,13 +41,18 @@ export const createPhotoStore = ({ bucketName, urlPrefix, legacyPrefix, legacyDi
 
   const findFile = (fileId) => bucket().find({ _id: fileId }).next();
 
+  const openUpload = (filename, options) =>
+    randomIds
+      ? bucket().openUploadStreamWithId(new mongoose.Types.ObjectId(crypto.randomBytes(12)), filename, options)
+      : bucket().openUploadStream(filename, options);
+
   // True for a photo URL this store manages — in GridFS or a legacy disk file.
   const isStoredUrl = (url) => !!fileIdFromUrl(url) || isLegacyUrl(url);
 
   // Stores one photo, owned by userId, and resolves to its URL.
   const save = (buffer, { contentType, filename, userId }) =>
     new Promise((resolve, reject) => {
-      const upload = bucket().openUploadStream(filename || "photo", {
+      const upload = openUpload(filename || "photo", {
         metadata: { contentType, user: String(userId) },
       });
       upload.once("error", reject);
@@ -132,7 +141,7 @@ export const createPhotoStore = ({ bucketName, urlPrefix, legacyPrefix, legacyDi
   // over the size limit), so nothing is left behind.
   const multerStorage = () => ({
     _handleFile(req, file, cb) {
-      const upload = bucket().openUploadStream(file.originalname || "photo", {
+      const upload = openUpload(file.originalname || "photo", {
         metadata: { contentType: file.mimetype, user: String(req.userId) },
       });
       upload.once("error", cb);

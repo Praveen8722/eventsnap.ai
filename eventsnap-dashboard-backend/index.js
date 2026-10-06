@@ -11,6 +11,7 @@ import galleryRoutes from "./src/routes/galleryRoutes.js";
 import invoiceRoutes from "./src/routes/invoiceRoutes.js";
 import inquiryRoutes from "./src/routes/inquiryRoutes.js";
 import portfolioRoutes from "./src/routes/portfolioRoutes.js";
+import createEventRoutes from "./src/routes/createEventRoutes.js";
 import { verifyEmailTransport } from "./src/services/emailservice.js";
 import { migrateLegacyPhotos } from "./src/services/accountPhotoStorage.js";
 import { migrateLegacyPortfolioPhotos } from "./src/services/portfolioPhotoStorage.js";
@@ -60,6 +61,7 @@ app.use("/api/galleries", galleryRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/inquiries", inquiryRoutes);
 app.use("/api/portfolio", portfolioRoutes);
+app.use("/api/create-events", createEventRoutes);
 
 // MongoDB connection
 mongoose

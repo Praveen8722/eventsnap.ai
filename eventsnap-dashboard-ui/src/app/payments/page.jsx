@@ -23,7 +23,7 @@ const quickActions = [
   { icon: <FaDownload />, label: "Download Receipt" },
 ];
 
-const PAYMENT_PAGE_SIZE = 7;
+const PAYMENT_PAGE_SIZE = 7; 
 const PENDING_INVOICE_PAGE_SIZE = 3;
 const TIMELINE_PAGE_SIZE = 3;
 

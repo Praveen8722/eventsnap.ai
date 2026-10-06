@@ -6,13 +6,13 @@ const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 // On the static GitHub Pages build this becomes 404.html, which Pages serves
 // for any path it has no file for — including every shared /p/<slug>
-// portfolio and /g/<slug> gallery link. Those are forwarded to the
-// equivalent /p?slug=<slug> or /g?slug=<slug> page so existing links and
-// QR codes keep working. Anything else is a normal "not found".
+// portfolio, /g/<slug> gallery and /share/<slug> event link. Those are
+// forwarded to the equivalent /p, /g or /share ?slug=<slug> page so existing
+// links and QR codes keep working. Anything else is a normal "not found".
 const legacyPublicLink = () => {
   let path = window.location.pathname;
   if (BASE_PATH && path.startsWith(BASE_PATH)) path = path.slice(BASE_PATH.length);
-  const match = path.match(/^\/(p|g)\/([^/]+)\/?$/);
+  const match = path.match(/^\/(p|g|share)\/([^/]+)\/?$/);
   if (!match) return null;
   // Trailing slash: the static build serves each page as <route>/index.html.
   return `${BASE_PATH}/${match[1]}/?slug=${match[2]}`;
