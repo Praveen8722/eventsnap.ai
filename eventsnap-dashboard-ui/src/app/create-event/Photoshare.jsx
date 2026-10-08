@@ -368,11 +368,9 @@ export function Photoshare() {
                 Try again
               </button>
             </div>
-          ) : events.length === 0 ? (
-            <EmptyState onCreate={() => setModal({ type: "create" })} />
           ) : (
             <>
-              {/* Overview strip: totals + how it works */}
+              {/* Overview strip: totals + how it works — always shown, also with 0 events */}
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mt-6">
                 <div className="lg:col-span-2 grid grid-cols-3 gap-3">
                   {[
@@ -407,53 +405,59 @@ export function Photoshare() {
                 </div>
               </div>
 
-              {/* Toolbar */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-8">
-                <div className="inline-flex rounded-lg bg-gray-100 p-1 w-fit">
-                  {FILTERS.map((f) => (
-                    <button
-                      key={f}
-                      type="button"
-                      onClick={() => setFilter(f)}
-                      className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${
-                        filter === f ? "bg-white text-[#6C63FF] shadow-sm" : "text-gray-500 hover:text-gray-700"
-                      }`}
-                    >
-                      {f}
-                    </button>
-                  ))}
-                </div>
-                <div className="relative sm:w-72">
-                  <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search events"
-                    className="w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-[#6C63FF] focus:ring-2 focus:ring-[#6C63FF]/20 transition"
-                  />
-                </div>
-              </div>
-
-              {visible.length === 0 ? (
-                <div className="mt-4 rounded-2xl border-2 border-dashed border-gray-200 py-12 text-center text-sm text-gray-500">
-                  No events match your filters.
-                </div>
+              {events.length === 0 ? (
+                <EmptyState onCreate={() => setModal({ type: "create" })} />
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 mt-4">
-                  {visible.map((event) => (
-                    <EventCard
-                      key={event.id}
-                      event={event}
-                      onOpen={() => openGallery(event)}
-                      onUpload={() => setModal({ type: "upload", id: event.id })}
-                      onShare={() => setModal({ type: "share", id: event.id })}
-                      onCopyLink={() => copyLink(event)}
-                      onDelete={() => deleteEvent(event)}
-                      onSetCover={(file) => setCover(event.id, file)}
-                      coverBusy={coverBusyId === event.id}
-                    />
-                  ))}
-                </div>
+                <>
+                  {/* Toolbar */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-8">
+                    <div className="inline-flex rounded-lg bg-gray-100 p-1 w-fit">
+                      {FILTERS.map((f) => (
+                        <button
+                          key={f}
+                          type="button"
+                          onClick={() => setFilter(f)}
+                          className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${
+                            filter === f ? "bg-white text-[#6C63FF] shadow-sm" : "text-gray-500 hover:text-gray-700"
+                          }`}
+                        >
+                          {f}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="relative sm:w-72">
+                      <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Search events"
+                        className="w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-[#6C63FF] focus:ring-2 focus:ring-[#6C63FF]/20 transition"
+                      />
+                    </div>
+                  </div>
+
+                  {visible.length === 0 ? (
+                    <div className="mt-4 rounded-2xl border-2 border-dashed border-gray-200 py-12 text-center text-sm text-gray-500">
+                      No events match your filters.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 mt-4">
+                      {visible.map((event) => (
+                        <EventCard
+                          key={event.id}
+                          event={event}
+                          onOpen={() => openGallery(event)}
+                          onUpload={() => setModal({ type: "upload", id: event.id })}
+                          onShare={() => setModal({ type: "share", id: event.id })}
+                          onCopyLink={() => copyLink(event)}
+                          onDelete={() => deleteEvent(event)}
+                          onSetCover={(file) => setCover(event.id, file)}
+                          coverBusy={coverBusyId === event.id}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}

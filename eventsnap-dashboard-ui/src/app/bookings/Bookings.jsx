@@ -295,7 +295,7 @@ export function Bookings() {
                 <td className="py-5 text-gray-700">
                   <div className="flex   flex-col">
                     <span>{item.clientName}</span>{" "}
-                    <span className="text-gray-400">{item.email}</span>
+                    <span className="text-gray-400">{item.phone}</span>
                   </div>
                 </td>
                 <td className="py-5 text-gray-700">{item.eventType}</td>

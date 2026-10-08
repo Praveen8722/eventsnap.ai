@@ -5,6 +5,7 @@ import {
   getEvent,
   getPublicEvent,
   recordGuestView,
+  registerGuest,
   faceSearch,
   saveFaceSignatures,
   downloadPublicPhoto,
@@ -37,6 +38,8 @@ router.get("/photos/:fileId", streamCreateEventPhoto);
 // recognised (and not counted); guests need no login.
 router.get("/public/:shareId", getPublicEvent);
 router.post("/public/:shareId/view", optionalAuthMiddleware, recordGuestView);
+// Guest Registration (only when the event's Guest Registration setting is on).
+router.post("/public/:shareId/register", registerGuest);
 // Guest selfie search (only when the event's Face Search setting is on).
 router.post("/public/:shareId/face-search", faceSearch);
 router.get(

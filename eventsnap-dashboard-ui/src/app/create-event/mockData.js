@@ -60,11 +60,11 @@ export const GUEST_FEATURES = [
 ];
 
 export const DEFAULT_SETTINGS = {
-  download: "disabled",
+  download: "free",
   pricePerPhoto: "",
   faceSearch: false,
   allowScreenshot: false,
-  guestRegistration: true,
+  guestRegistration: false,
   instagramFollow: false,
   instagramHandle: "",
 };

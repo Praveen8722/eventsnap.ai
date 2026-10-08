@@ -4,6 +4,7 @@ import CreateEvent, {
   CREATE_EVENT_STATUSES,
   PHOTO_DOWNLOAD_OPTIONS,
 } from "../models/CreateEvent.js";
+import CreateEventGuestRegistration from "../models/CreateEventGuestRegistration.js";
 import {
   discardPhotos,
   removeUnreferencedPhotos,
@@ -140,7 +141,7 @@ const applyFields = (target, body, { creating }) => {
     const next = {
       faceSearch: !!current.faceSearch,
       screenshot: !!current.screenshot,
-      guestRegistration: current.guestRegistration ?? true,
+      guestRegistration: !!current.guestRegistration,
       instagramFollow: !!current.instagramFollow,
       instagramHandle: current.instagramHandle || "",
     };
@@ -376,6 +377,55 @@ export const recordGuestView = async (req, res) => {
   }
 };
 
+//================== GUEST REGISTRATION =================
+// POST /public/:shareId/register — body { name, phone, email? }. Accepted
+// only while the event's Guest Registration setting is on; name and phone
+// are required, email optional. Saves (or updates) one registration per
+// event + phone number.
+const GUEST_PHONE = /^\+?[0-9]{7,15}$/; // after removing spaces, dashes, brackets
+const GUEST_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export const registerGuest = async (req, res) => {
+  try {
+    const { shareId } = req.params;
+    if (!validShareId(shareId)) return notFound(res);
+
+    const body = req.body || {};
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    const phone = typeof body.phone === "string" ? body.phone.replace(/[\s()-]/g, "") : "";
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    if (!name || name.length > 100) {
+      return res.status(400).json({ success: false, message: "Please enter your full name" });
+    }
+    if (!GUEST_PHONE.test(phone)) {
+      return res.status(400).json({ success: false, message: "Please enter a valid phone number" });
+    }
+    if (email && (email.length > 254 || !GUEST_EMAIL.test(email))) {
+      return res.status(400).json({ success: false, message: "Please enter a valid email address" });
+    }
+
+    const event = await CreateEvent.findOne({ slug: shareId }).select("guestAccess").lean();
+    if (!event) return notFound(res);
+    if (!event.guestAccess?.guestRegistration) {
+      return res.status(403).json({ success: false, message: "Registration isn't needed for this event" });
+    }
+
+    try {
+      await CreateEventGuestRegistration.updateOne(
+        { event: event._id, phone },
+        { $set: { name, email } },
+        { upsert: true, runValidators: true }
+      );
+    } catch (error) {
+      // Same phone registering twice at the same moment: already saved.
+      if (error?.code !== 11000) throw error;
+    }
+    res.status(201).json({ success: true });
+  } catch (error) {
+    serverError(res, error);
+  }
+};
+
 //================== GUEST PHOTO DOWNLOAD =================
 // GET /public/:shareId/photos/:photoId/download — streams the photo as a
 // file download and, only once it has been completely sent, counts it with
@@ -460,6 +510,7 @@ export const deleteEvent = async (req, res) => {
       null,
       req.userId
     );
+    await CreateEventGuestRegistration.deleteMany({ event: event._id });
     res.status(200).json({ success: true, message: "Event deleted successfully" });
   } catch (error) {
     serverError(res, error);

@@ -17,7 +17,7 @@ import {
 import { isLoggedIn } from "@/lib/session";
 import { whatsAppLink } from "@/lib/whatsapp";
 
-const tabs = ["All", "Unread", "Payments", "Bookings", "Enquiries", "Reminders"];
+const tabs = ["All", "Payments", "Bookings", "Enquiries", "Reminders"];
 const PAGE_SIZE = 8;
 
 const timeAgo = (value) => {

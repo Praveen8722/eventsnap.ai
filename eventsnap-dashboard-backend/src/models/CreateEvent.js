@@ -33,7 +33,7 @@ const guestAccessSchema = new mongoose.Schema(
   {
     faceSearch: { type: Boolean, default: false },
     screenshot: { type: Boolean, default: false },
-    guestRegistration: { type: Boolean, default: true },
+    guestRegistration: { type: Boolean, default: false },
     instagramFollow: { type: Boolean, default: false },
     instagramHandle: { type: String, default: "", trim: true, maxlength: 60 },
   },

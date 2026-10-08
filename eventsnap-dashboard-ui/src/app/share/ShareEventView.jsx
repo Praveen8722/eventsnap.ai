@@ -18,6 +18,8 @@ import {
   recordEventView,
 } from "@/api/createEventApi";
 import { formatEventDate } from "@/app/create-event/mockData";
+import { GuestRegistration } from "./GuestRegistration";
+import { InstagramFollowGate } from "./InstagramFollowGate";
 import { SelfieSearch } from "./SelfieSearch";
 
 // Public guest page for a Create Event — /share/<shareId> (QR / share link).
@@ -29,6 +31,23 @@ import { SelfieSearch } from "./SelfieSearch";
 const VIEW_WINDOW_MS = 30 * 60 * 1000;
 const viewKey = (shareId) => `eventsnap-share-view:${shareId}`;
 const viewInFlight = new Set();
+
+// Guest Registration / Strict Instagram Follow: remembered per browser per
+// event, so a guest who has done them isn't asked again.
+const registeredKey = (shareId) => `eventsnap-guest-registered:${shareId}`;
+const followedKey = (shareId) => `eventsnap-guest-instagram:${shareId}`;
+const loadFlag = (shareId, key) => {
+  try {
+    return !!shareId && localStorage.getItem(key(shareId)) === "1";
+  } catch {
+    return false;
+  }
+};
+const saveFlag = (shareId, key) => {
+  try {
+    localStorage.setItem(key(shareId), "1");
+  } catch {}
+};
 
 // onOwnerVisit runs when the backend recognises the signed-in photographer
 // as this event's owner (their own visits aren't counted). The "viewed" mark
@@ -105,6 +124,13 @@ export default function ShareEventView({ shareId }) {
   // Face Search: the selfie search result ({ matches, indexed, total }), null
   // until the guest has searched.
   const [faceResult, setFaceResult] = useState(null);
+  // Guest Registration done on this browser (see registeredKey).
+  const [registered, setRegistered] = useState(() => loadFlag(shareId, registeredKey));
+  // Strict Instagram Follow done on this browser (see followedKey).
+  const [followed, setFollowed] = useState(() => loadFlag(shareId, followedKey));
+  // Allow Screenshot off: photos are hidden while the page isn't in front
+  // (e.g. a screenshot / screen-recording tool has the focus).
+  const [obscured, setObscured] = useState(false);
   const noticeTimer = useRef(null);
 
   useEffect(() => {
@@ -132,9 +158,23 @@ export default function ShareEventView({ shareId }) {
   };
 
   const canDownload = event?.photoDownload === "free";
+  // Guest Registration on: guests register before any photos are shown (the
+  // photographer's own preview skips it).
+  const mustRegister = !!event?.guestAccess?.guestRegistration && !registered && !ownerPreview;
+  // Strict Instagram Follow on: after registering (if needed), guests follow
+  // the photographer's Instagram before any photos are shown.
+  const instagramHandle = event?.guestAccess?.instagramHandle || "";
+  const mustFollow =
+    !mustRegister && !!event?.guestAccess?.instagramFollow && !!instagramHandle && !followed && !ownerPreview;
+  const gated = mustRegister || mustFollow;
+  // Allow Screenshot off: no right-click / long-press saving, dragging,
+  // printing or save shortcuts, and photos hide while the page isn't in
+  // front. (A web page can't block the device's own screenshot keys.) The
+  // photographer's own preview isn't restricted.
+  const protect = !!event && !event.guestAccess?.screenshot && !ownerPreview;
   // With Face Search on, guests see only the photos matched to their selfie.
   const faceMode = !!event?.guestAccess?.faceSearch;
-  const photos = faceMode ? faceResult?.matches || [] : event?.photos || [];
+  const photos = gated ? [] : faceMode ? faceResult?.matches || [] : event?.photos || [];
 
   const busy = !!downloadingId || !!bulk;
   const selectedSet = new Set(selected);
@@ -216,6 +256,40 @@ export default function ShareEventView({ shareId }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [lightbox, photos.length]);
 
+  useEffect(() => {
+    if (!protect) return;
+    let printScreenTimer;
+    const hide = () => setObscured(true);
+    const show = () => setObscured(false);
+    const onVisibility = () => (document.hidden ? hide() : show());
+    const onKeyDown = (e) => {
+      const key = e.key.toLowerCase();
+      // Save page / print.
+      if ((e.ctrlKey || e.metaKey) && (key === "s" || key === "p")) e.preventDefault();
+    };
+    const onKeyUp = (e) => {
+      if (e.key !== "PrintScreen") return;
+      // Best effort: replace what the key just copied, and hide for a moment.
+      navigator.clipboard?.writeText("").catch(() => {});
+      hide();
+      clearTimeout(printScreenTimer);
+      printScreenTimer = setTimeout(() => document.hasFocus() && show(), 1500);
+    };
+    window.addEventListener("blur", hide);
+    window.addEventListener("focus", show);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      clearTimeout(printScreenTimer);
+      window.removeEventListener("blur", hide);
+      window.removeEventListener("focus", show);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    };
+  }, [protect]);
+
   if (status === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -241,274 +315,318 @@ export default function ShareEventView({ shareId }) {
   const current = lightbox !== null ? photos[lightbox] : null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Hero */}
-      <header className="relative h-64 sm:h-80 lg:h-96 overflow-hidden bg-gradient-to-br from-[#6C63FF] to-[#A23EFF]">
-        {cover && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={cover} alt="" className="absolute inset-0 w-full h-full object-cover" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-        <div className="absolute top-4 left-4 sm:top-6 sm:left-6 text-sm font-bold">
-          <span className="text-[#FF5555]">
-            Event<span className="text-blue-300">Snap</span>
-            <span className="text-white">.AI</span>
-          </span>
-        </div>
-        <div className="absolute inset-x-0 bottom-0 max-w-6xl mx-auto px-4 sm:px-6 pb-6 sm:pb-8 text-white">
-          <h1 className="text-2xl sm:text-4xl font-bold leading-tight break-words">{event.name}</h1>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-white/85">
-            <span className="inline-flex items-center gap-1.5">
-              <HiOutlineCalendar />
-              {formatEventDate(event.date)}
-            </span>
-            {event.location && (
-              <span className="inline-flex items-center gap-1.5">
-                <HiOutlineLocationMarker />
-                {event.location}
-              </span>
-            )}
-            <span className="inline-flex items-center gap-1.5">
-              <HiOutlinePhotograph />
-              {event.photoCount.toLocaleString("en-IN")} photo{event.photoCount === 1 ? "" : "s"}
-            </span>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-        {ownerPreview && (
-          <p className="mb-4 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600">
-            <span className="font-semibold text-gray-800">Owner preview.</span> You&apos;re signed in as this
-            event&apos;s photographer, so your own visits and downloads aren&apos;t counted in Guest Views or
-            Downloads. Open the link in a private window (or another device) to see it as a guest.
-          </p>
-        )}
-        {faceMode && (
-          <SelfieSearch
-            shareId={shareId}
-            eventName={event.name}
-            result={faceResult}
-            onResult={(result) => {
-              setSelected([]);
-              setLightbox(null);
-              setFaceResult(result);
-            }}
-          />
-        )}
-        {photos.length > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${note.tone}`}>
-              {canDownload && <HiOutlineDownload />}
-              {note.text}
-            </p>
-            {canDownload && (
-              <div className="flex items-center gap-1 text-sm">
-                {selecting && (
-                  <span className="mr-2 font-semibold text-gray-700">{selected.length} selected</span>
-                )}
-                <button
-                  type="button"
-                  onClick={selectAll}
-                  disabled={busy || selected.length === photos.length}
-                  className="rounded-lg px-3 py-1.5 font-semibold text-[#6C63FF] hover:bg-[#6C63FF]/10 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
-                >
-                  Select All
-                </button>
-                {selecting && (
-                  <button
-                    type="button"
-                    onClick={clearSelection}
-                    disabled={busy}
-                    className="rounded-lg px-3 py-1.5 font-semibold text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {faceMode && photos.length === 0 ? null : photos.length === 0 ? (
-          <div className="mt-6 rounded-2xl border-2 border-dashed border-gray-200 bg-white py-16 px-6 text-center">
-            <HiOutlinePhotograph className="mx-auto text-4xl text-[#6C63FF]" />
-            <p className="font-semibold text-gray-800 mt-3">Photos are on their way</p>
-            <p className="text-sm text-gray-500 mt-1">Check back soon — the photographer hasn&apos;t shared any photos yet.</p>
-          </div>
-        ) : (
-          <div className="columns-2 sm:columns-3 lg:columns-4 gap-3 mt-5">
-            {photos.map((photo, i) => (
-              <div
-                key={photo.id}
-                className={`group relative mb-3 break-inside-avoid rounded-xl overflow-hidden bg-gray-100 ${
-                  selectedSet.has(photo.id) ? "ring-[3px] ring-[#6C63FF] ring-offset-2 ring-offset-gray-50" : ""
-                }`}
-              >
-                <button
-                  type="button"
-                  onClick={() => (canDownload && selecting ? toggleSelect(photo.id) : setLightbox(i))}
-                  className="block w-full"
-                  aria-label={canDownload && selecting ? `Select photo ${i + 1}` : `View photo ${i + 1}`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={createEventAssetUrl(photo.url)}
-                    alt=""
-                    loading="lazy"
-                    className="w-full h-auto block transition-transform duration-500 group-hover:scale-[1.03]"
-                  />
-                </button>
-                {canDownload && selectedSet.has(photo.id) && (
-                  <div className="pointer-events-none absolute inset-0 bg-[#6C63FF]/15" />
-                )}
-                {canDownload && (
-                  <button
-                    type="button"
-                    role="checkbox"
-                    aria-checked={selectedSet.has(photo.id)}
-                    aria-label={`Select photo ${i + 1}`}
-                    onClick={() => toggleSelect(photo.id)}
-                    disabled={!!bulk}
-                    className={`absolute top-2 left-2 w-7 h-7 rounded-full border-2 flex items-center justify-center shadow transition-opacity ${
-                      selectedSet.has(photo.id)
-                        ? "bg-[#6C63FF] border-[#6C63FF] text-white"
-                        : "bg-white/80 border-white text-transparent hover:text-gray-400"
-                    } ${selecting ? "" : "sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"}`}
-                  >
-                    <HiCheck className="text-sm" />
-                  </button>
-                )}
-                {canDownload && (
-                  <button
-                    type="button"
-                    onClick={() => download(photo, i)}
-                    disabled={busy}
-                    aria-label={`Download photo ${i + 1}`}
-                    className="absolute top-2 right-2 w-9 h-9 rounded-full bg-white/90 text-gray-800 flex items-center justify-center shadow hover:bg-white sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 transition-opacity disabled:cursor-wait"
-                  >
-                    {downloadingId === photo.id ? (
-                      <span className="w-4 h-4 rounded-full border-2 border-[#6C63FF] border-t-transparent animate-spin" />
-                    ) : (
-                      <HiOutlineDownload />
-                    )}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        <p className={`text-center text-xs text-gray-400 mt-10 ${canDownload && selecting ? "pb-20" : ""}`}>
-          Shared with EventSnap.AI
+    <div
+      className={`min-h-screen bg-gray-50 ${protect ? "select-none" : ""}`}
+      style={protect ? { WebkitTouchCallout: "none" } : undefined}
+      onContextMenu={protect ? (e) => e.preventDefault() : undefined}
+      onDragStart={protect ? (e) => e.preventDefault() : undefined}
+      data-screenshot-protection={protect ? "on" : "off"}
+    >
+      {protect && (
+        <p className="hidden print:block p-10 text-center text-gray-700">
+          Printing and screenshots are turned off for this event.
         </p>
-      </main>
-
-      {/* Lightbox */}
-      {current && (
-        <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center" onClick={() => setLightbox(null)}>
-          <div className="absolute top-0 inset-x-0 flex items-center justify-between gap-2 p-4 text-white/80 text-sm">
-            <span>
-              {lightbox + 1} / {photos.length}
+      )}
+      <div className={protect ? "print:hidden" : undefined}>
+        {/* Hero */}
+        <header className="relative h-64 sm:h-80 lg:h-96 overflow-hidden bg-gradient-to-br from-[#6C63FF] to-[#A23EFF]">
+          {cover && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={cover} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+          <div className="absolute top-4 left-4 sm:top-6 sm:left-6 text-sm font-bold">
+            <span className="text-[#FF5555]">
+              Event<span className="text-blue-300">Snap</span>
+              <span className="text-white">.AI</span>
             </span>
-            <div className="flex items-center gap-2">
+          </div>
+          <div className="absolute inset-x-0 bottom-0 max-w-6xl mx-auto px-4 sm:px-6 pb-6 sm:pb-8 text-white">
+            <h1 className="text-2xl sm:text-4xl font-bold leading-tight break-words">{event.name}</h1>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-white/85">
+              <span className="inline-flex items-center gap-1.5">
+                <HiOutlineCalendar />
+                {formatEventDate(event.date)}
+              </span>
+              {event.location && (
+                <span className="inline-flex items-center gap-1.5">
+                  <HiOutlineLocationMarker />
+                  {event.location}
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1.5">
+                <HiOutlinePhotograph />
+                {event.photoCount.toLocaleString("en-IN")} photo{event.photoCount === 1 ? "" : "s"}
+              </span>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+          {ownerPreview && (
+            <p className="mb-4 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600">
+              <span className="font-semibold text-gray-800">Owner preview.</span> You&apos;re signed in as this
+              event&apos;s photographer, so your own visits and downloads aren&apos;t counted in Guest Views or
+              Downloads. Open the link in a private window (or another device) to see it as a guest.
+            </p>
+          )}
+          {mustRegister && (
+            <GuestRegistration
+              shareId={shareId}
+              eventName={event.name}
+              onRegistered={() => {
+                saveFlag(shareId, registeredKey);
+                setRegistered(true);
+              }}
+            />
+          )}
+          {mustFollow && (
+            <InstagramFollowGate
+              handle={instagramHandle}
+              eventName={event.name}
+              onContinue={() => {
+                saveFlag(shareId, followedKey);
+                setFollowed(true);
+              }}
+            />
+          )}
+          {!gated && faceMode && (
+            <SelfieSearch
+              shareId={shareId}
+              eventName={event.name}
+              result={faceResult}
+              onResult={(result) => {
+                setSelected([]);
+                setLightbox(null);
+                setFaceResult(result);
+              }}
+            />
+          )}
+          {photos.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${note.tone}`}>
+                {canDownload && <HiOutlineDownload />}
+                {note.text}
+              </p>
               {canDownload && (
+                <div className="flex items-center gap-1 text-sm">
+                  {selecting && (
+                    <span className="mr-2 font-semibold text-gray-700">{selected.length} selected</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={selectAll}
+                    disabled={busy || selected.length === photos.length}
+                    className="rounded-lg px-3 py-1.5 font-semibold text-[#6C63FF] hover:bg-[#6C63FF]/10 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                  >
+                    Select All
+                  </button>
+                  {selecting && (
+                    <button
+                      type="button"
+                      onClick={clearSelection}
+                      disabled={busy}
+                      className="rounded-lg px-3 py-1.5 font-semibold text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {gated || (faceMode && photos.length === 0) ? null : photos.length === 0 ? (
+            <div className="mt-6 rounded-2xl border-2 border-dashed border-gray-200 bg-white py-16 px-6 text-center">
+              <HiOutlinePhotograph className="mx-auto text-4xl text-[#6C63FF]" />
+              <p className="font-semibold text-gray-800 mt-3">Photos are on their way</p>
+              <p className="text-sm text-gray-500 mt-1">Check back soon — the photographer hasn&apos;t shared any photos yet.</p>
+            </div>
+          ) : (
+            <div className="columns-2 sm:columns-3 lg:columns-4 gap-3 mt-5">
+              {photos.map((photo, i) => (
+                <div
+                  key={photo.id}
+                  className={`group relative mb-3 break-inside-avoid rounded-xl overflow-hidden bg-gray-100 ${
+                    selectedSet.has(photo.id) ? "ring-[3px] ring-[#6C63FF] ring-offset-2 ring-offset-gray-50" : ""
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => (canDownload && selecting ? toggleSelect(photo.id) : setLightbox(i))}
+                    className="block w-full"
+                    aria-label={canDownload && selecting ? `Select photo ${i + 1}` : `View photo ${i + 1}`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={createEventAssetUrl(photo.url)}
+                      alt=""
+                      loading="lazy"
+                      draggable={!protect}
+                      className="w-full h-auto block transition-transform duration-500 group-hover:scale-[1.03]"
+                    />
+                  </button>
+                  {canDownload && selectedSet.has(photo.id) && (
+                    <div className="pointer-events-none absolute inset-0 bg-[#6C63FF]/15" />
+                  )}
+                  {canDownload && (
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={selectedSet.has(photo.id)}
+                      aria-label={`Select photo ${i + 1}`}
+                      onClick={() => toggleSelect(photo.id)}
+                      disabled={!!bulk}
+                      className={`absolute top-2 left-2 w-7 h-7 rounded-full border-2 flex items-center justify-center shadow transition-opacity ${
+                        selectedSet.has(photo.id)
+                          ? "bg-[#6C63FF] border-[#6C63FF] text-white"
+                          : "bg-white/80 border-white text-transparent hover:text-gray-400"
+                      } ${selecting ? "" : "sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"}`}
+                    >
+                      <HiCheck className="text-sm" />
+                    </button>
+                  )}
+                  {canDownload && (
+                    <button
+                      type="button"
+                      onClick={() => download(photo, i)}
+                      disabled={busy}
+                      aria-label={`Download photo ${i + 1}`}
+                      className="absolute top-2 right-2 w-9 h-9 rounded-full bg-white/90 text-gray-800 flex items-center justify-center shadow hover:bg-white sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 transition-opacity disabled:cursor-wait"
+                    >
+                      {downloadingId === photo.id ? (
+                        <span className="w-4 h-4 rounded-full border-2 border-[#6C63FF] border-t-transparent animate-spin" />
+                      ) : (
+                        <HiOutlineDownload />
+                      )}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <p className={`text-center text-xs text-gray-400 mt-10 ${canDownload && selecting ? "pb-20" : ""}`}>
+            Shared with EventSnap.AI
+          </p>
+        </main>
+
+        {/* Lightbox */}
+        {current && (
+          <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center" onClick={() => setLightbox(null)}>
+            <div className="absolute top-0 inset-x-0 flex items-center justify-between gap-2 p-4 text-white/80 text-sm">
+              <span>
+                {lightbox + 1} / {photos.length}
+              </span>
+              <div className="flex items-center gap-2">
+                {canDownload && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      download(current, lightbox);
+                    }}
+                    disabled={busy}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-white/10 hover:bg-white/20 px-3.5 py-2 text-sm font-semibold text-white disabled:cursor-wait"
+                  >
+                    <HiOutlineDownload />
+                    {downloadingId === current.id ? "Downloading…" : "Download"}
+                  </button>
+                )}
                 <button
                   type="button"
+                  onClick={() => setLightbox(null)}
+                  aria-label="Close"
+                  className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center"
+                >
+                  <HiX className="text-xl" />
+                </button>
+              </div>
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={createEventAssetUrl(current.url)}
+              alt=""
+              draggable={!protect}
+              onClick={(e) => e.stopPropagation()}
+              className="max-w-[calc(100vw-2rem)] sm:max-w-[calc(100vw-10rem)] max-h-[calc(100vh-8rem)] object-contain rounded-lg shadow-2xl"
+            />
+            {photos.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  aria-label="Previous photo"
                   onClick={(e) => {
                     e.stopPropagation();
-                    download(current, lightbox);
+                    setLightbox((lightbox - 1 + photos.length) % photos.length);
                   }}
-                  disabled={busy}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-white/10 hover:bg-white/20 px-3.5 py-2 text-sm font-semibold text-white disabled:cursor-wait"
+                  className="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center"
                 >
-                  <HiOutlineDownload />
-                  {downloadingId === current.id ? "Downloading…" : "Download"}
+                  <HiChevronLeft className="text-2xl" />
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setLightbox(null)}
-                aria-label="Close"
-                className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center"
-              >
-                <HiX className="text-xl" />
-              </button>
+                <button
+                  type="button"
+                  aria-label="Next photo"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLightbox((lightbox + 1) % photos.length);
+                  }}
+                  className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center"
+                >
+                  <HiChevronRight className="text-2xl" />
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
+        {canDownload && selecting && lightbox === null && (
+          <div className="fixed z-50 inset-x-0 bottom-0 border-t border-gray-200 bg-white/95 backdrop-blur shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-gray-800">
+                {bulk ? `Downloading ${Math.min(bulk.done + 1, bulk.total)} of ${bulk.total}…` : `${selected.length} selected`}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  disabled={busy}
+                  className="rounded-lg px-3 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 disabled:opacity-40 transition-colors"
+                >
+                  Clear
+                </button>
+                <button
+                  type="button"
+                  onClick={downloadSelected}
+                  disabled={busy}
+                  className="inline-flex items-center gap-2 rounded-lg bg-[#6C63FF] px-4 py-2 text-sm font-semibold text-white hover:bg-[#5B52EE] disabled:opacity-60 disabled:cursor-wait transition-colors"
+                >
+                  <HiOutlineDownload className="text-lg" />
+                  Download Selected
+                </button>
+              </div>
             </div>
           </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={createEventAssetUrl(current.url)}
-            alt=""
-            onClick={(e) => e.stopPropagation()}
-            className="max-w-[calc(100vw-2rem)] sm:max-w-[calc(100vw-10rem)] max-h-[calc(100vh-8rem)] object-contain rounded-lg shadow-2xl"
-          />
-          {photos.length > 1 && (
-            <>
-              <button
-                type="button"
-                aria-label="Previous photo"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setLightbox((lightbox - 1 + photos.length) % photos.length);
-                }}
-                className="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center"
-              >
-                <HiChevronLeft className="text-2xl" />
-              </button>
-              <button
-                type="button"
-                aria-label="Next photo"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setLightbox((lightbox + 1) % photos.length);
-                }}
-                className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center"
-              >
-                <HiChevronRight className="text-2xl" />
-              </button>
-            </>
-          )}
-        </div>
-      )}
+        )}
 
-      {canDownload && selecting && lightbox === null && (
-        <div className="fixed z-50 inset-x-0 bottom-0 border-t border-gray-200 bg-white/95 backdrop-blur shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-gray-800">
-              {bulk ? `Downloading ${Math.min(bulk.done + 1, bulk.total)} of ${bulk.total}…` : `${selected.length} selected`}
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={clearSelection}
-                disabled={busy}
-                className="rounded-lg px-3 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 disabled:opacity-40 transition-colors"
-              >
-                Clear
-              </button>
-              <button
-                type="button"
-                onClick={downloadSelected}
-                disabled={busy}
-                className="inline-flex items-center gap-2 rounded-lg bg-[#6C63FF] px-4 py-2 text-sm font-semibold text-white hover:bg-[#5B52EE] disabled:opacity-60 disabled:cursor-wait transition-colors"
-              >
-                <HiOutlineDownload className="text-lg" />
-                Download Selected
-              </button>
-            </div>
+        {notice && (
+          <div
+            role="status"
+            className={`fixed z-[70] ${canDownload && selecting ? "bottom-20" : "bottom-6"} left-1/2 -translate-x-1/2 rounded-full px-4 py-2.5 text-sm font-medium shadow-xl ${
+              notice.tone === "error" ? "bg-red-600 text-white" : "bg-[#1E1E1E] text-white"
+            }`}
+          >
+            {notice.text}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {notice && (
+      {protect && obscured && (
         <div
           role="status"
-          className={`fixed z-[70] ${canDownload && selecting ? "bottom-20" : "bottom-6"} left-1/2 -translate-x-1/2 rounded-full px-4 py-2.5 text-sm font-medium shadow-xl ${
-            notice.tone === "error" ? "bg-red-600 text-white" : "bg-[#1E1E1E] text-white"
-          }`}
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-white/70 backdrop-blur-2xl px-6 text-center"
         >
-          {notice.text}
+          <p className="text-sm font-semibold text-gray-700">Screenshots are turned off for this event.</p>
         </div>
       )}
     </div>

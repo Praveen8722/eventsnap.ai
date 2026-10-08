@@ -73,6 +73,10 @@ export const getPublicEvent = (shareId) => api.get(`${BASE}/public/${encodeURICo
 // Records one guest view of the event (the backend increments guestViews).
 export const recordEventView = (shareId) => api.post(`${BASE}/public/${encodeURIComponent(shareId)}/view`);
 
+// Guest Registration: { name, phone, email } (email may be empty).
+export const registerEventGuest = (shareId, details) =>
+  api.post(`${BASE}/public/${encodeURIComponent(shareId)}/register`, details);
+
 // Downloads one photo as a Blob; the backend counts it only once the file
 // has been fully sent, and refuses it when downloads aren't allowed.
 export const downloadEventPhoto = (shareId, photoId) =>
