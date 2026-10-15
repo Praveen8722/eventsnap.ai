@@ -4,31 +4,23 @@ export function RefundPage() {
   return (
     <PolicyPage
       title="Refund Policy"
-      lastUpdated="January 1, 2025"
+      lastUpdated="Placeholder — update before launch"
       sections={[
         {
-          h: "Overview",
-          p: "We want you to be completely satisfied with EventSnap.ai. If you are not satisfied with your purchase for any reason, we offer a straightforward refund policy as described below.",
+          h: "1. Placeholder Policy",
+          p: "This Refund Policy is a placeholder draft for EventSnap. The project codebase does not define final commercial billing terms, so this page should be reviewed and approved by your legal and finance team before launch.",
         },
         {
-          h: "14-Day Free Trial",
-          p: "All paid plans include a 14-day free trial. You will not be charged during your trial period. You may cancel at any time during your trial at no cost. After the trial ends, your subscription will automatically begin and you will be charged.",
+          h: "2. Billing Model",
+          p: "If EventSnap is sold on a custom quote basis, a trial basis, or a subscription model, the final refund policy should match that billing structure exactly. For example, the policy should state whether any trial is included, how cancellation works, and what happens to outstanding invoices or credits.",
         },
         {
-          h: "Monthly Subscriptions",
-          p: "For monthly subscriptions, you may cancel at any time. Your subscription will remain active until the end of the current billing period. We do not offer partial-month refunds for monthly subscriptions unless required by applicable law.",
+          h: "3. Request Process",
+          p: "A final refund policy should explain how users request refunds, how long review will take, whether a refund is partial or full, and which contact email or support channel is used for finance requests. Replace this placeholder with your actual process and contact details.",
         },
         {
-          h: "Annual Subscriptions",
-          p: "For annual subscriptions canceled within 30 days of payment, we will issue a full refund. Cancellations after 30 days are not eligible for refunds, but your account will remain active until the end of the annual billing period.",
-        },
-        {
-          h: "How to Request a Refund",
-          p: "To request a refund, contact our support team at billing@eventsnap.ai with your account email and reason for the refund request. We will review your request and respond within 2–3 business days. Approved refunds are processed within 5–10 business days.",
-        },
-        {
-          h: "Exceptions",
-          p: "Refunds may be denied if your account has violated our Terms of Service. Refunds are not available for one-time add-ons or additional storage purchases. We reserve the right to deny refunds at our discretion if abuse of this policy is detected.",
+          h: "4. Exceptions",
+          p: "Any final policy should include exceptions such as service misuse, non-refundable fees, or custom work already delivered. The policy should also reflect the jurisdiction in which you operate and any laws that may override generic customer refund terms.",
         },
       ]}
     />

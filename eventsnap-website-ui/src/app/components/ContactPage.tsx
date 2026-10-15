@@ -4,9 +4,6 @@ import { SectionLabel } from "./SectionLabel";
 import { PrimaryBtn } from "./PrimaryBtn";
 import { PURPLE, CORAL, DARK_GRADIENT } from "./theme";
 
-// EventSnap.ai company website's own backend (separate project, separate
-// database) — see eventsnap-website-backend/src/routes/contactRoutes.js.
-// Hosted website backend (VITE_WEBSITE_API_URL, set by pages-cd.yaml), local one otherwise.
 const CONTACT_API_URL = `${
   import.meta.env.VITE_WEBSITE_API_URL || "http://localhost:8081"
 }/api/contact`;
@@ -60,8 +57,7 @@ export function ContactPage() {
             We'd love to hear from you
           </h1>
           <p className="text-white/65 text-lg">
-            Have a question, feedback, or want a demo? Our team replies within 1
-            business day.
+            Ask about bookings, event galleries, portfolio setup, or how EventSnap fits your photography business.
           </p>
         </div>
       </section>
@@ -88,7 +84,7 @@ export function ContactPage() {
                     Message sent!
                   </h3>
                   <p className="text-muted-foreground">
-                    We'll get back to you within 1 business day.
+                    We'll get back to you as soon as possible.
                   </p>
                 </div>
               ) : (
@@ -101,7 +97,7 @@ export function ContactPage() {
                       <input
                         type="text"
                         required
-                        placeholder="Sarah Mitchell"
+                        placeholder="Your name"
                         value={form.name}
                         onChange={(e) =>
                           setForm({ ...form, name: e.target.value })
@@ -116,7 +112,7 @@ export function ContactPage() {
                       <input
                         type="email"
                         required
-                        placeholder="sarah@studio.com"
+                        placeholder="you@example.com"
                         value={form.email}
                         onChange={(e) =>
                           setForm({ ...form, email: e.target.value })
@@ -132,7 +128,7 @@ export function ContactPage() {
                     <input
                       type="text"
                       required
-                      placeholder="How can we help?"
+                      placeholder="Question about EventSnap"
                       value={form.subject}
                       onChange={(e) =>
                         setForm({ ...form, subject: e.target.value })
@@ -147,7 +143,7 @@ export function ContactPage() {
                     <textarea
                       required
                       rows={5}
-                      placeholder="Tell us more..."
+                      placeholder="Tell us about your studio or workflow..."
                       value={form.message}
                       onChange={(e) =>
                         setForm({ ...form, message: e.target.value })
@@ -176,16 +172,16 @@ export function ContactPage() {
             <div className="lg:col-span-2 space-y-5">
               {[
                 { icon: Mail, label: "Email", value: "hello@eventsnap.ai" },
-                { icon: Phone, label: "Phone", value: "+1 (800) 123-4567" },
+                { icon: Phone, label: "Phone", value: "Use the contact form for a call-back request" },
                 {
                   icon: MapPin,
                   label: "Address",
-                  value: "340 Pine Street, San Francisco, CA 94104",
+                  value: "Placeholder address — update before launch",
                 },
                 {
                   icon: Clock,
                   label: "Support Hours",
-                  value: "Mon–Fri, 9am–6pm PT",
+                  value: "Placeholder support hours",
                 },
               ].map(({ icon: Icon, label, value }) => (
                 <div

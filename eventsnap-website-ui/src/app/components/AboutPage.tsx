@@ -4,28 +4,6 @@ import { CORAL, DARK_GRADIENT } from "./theme";
 import type { Page } from "./types";
 
 export function AboutPage({ go }: { go: (p: Page) => void }) {
-  const team = [
-    {
-      name: "Alex Rivera",
-      role: "Co-Founder & CEO",
-      imgId: "1507003211169-0a1dd7228f2d",
-    },
-    {
-      name: "Maya Patel",
-      role: "Co-Founder & CTO",
-      imgId: "1573496359142-b8d87734a5a2",
-    },
-    {
-      name: "Jordan Brooks",
-      role: "Head of Product",
-      imgId: "1560250097-0b93528c311a",
-    },
-    {
-      name: "Lena Schmidt",
-      role: "Head of Design",
-      imgId: "1580489944761-15a19d654956",
-    },
-  ];
   return (
     <div>
       <section className="py-20" style={{ background: DARK_GRADIENT }}>
@@ -35,12 +13,12 @@ export function AboutPage({ go }: { go: (p: Page) => void }) {
             className="text-4xl sm:text-5xl font-bold text-white mb-5"
             style={{ fontFamily: "Poppins, sans-serif" }}
           >
-            Built by photographers, for photographers
+            EventSnap helps photographers run the business behind the work
           </h1>
           <p className="text-white/65 text-lg">
-            EventSnap.ai was born from frustration — our founders were
-            photographers tired of juggling 5 different apps, losing bookings in
-            email, and spending nights on admin instead of editing.
+            The product is built around the real workflow photographers need after a shoot:
+            managing inquiries, tracking bookings, sharing galleries, keeping portfolios updated,
+            and staying on top of invoicing and client communication.
           </p>
         </div>
       </section>
@@ -53,55 +31,52 @@ export function AboutPage({ go }: { go: (p: Page) => void }) {
                 className="text-3xl font-bold text-foreground mb-5"
                 style={{ fontFamily: "Poppins, sans-serif" }}
               >
-                Our mission
+                Our focus
               </h2>
               <p className="text-muted-foreground text-lg leading-relaxed mb-5">
-                We believe photographers deserve tools as beautiful and
-                professional as their work. Our mission is to eliminate the
-                business burden so photographers can focus on what they love —
-                creating.
+                EventSnap is designed for photographers who need more than a gallery tool.
+                It brings together the operational side of a photography business — inquiry flow,
+                client booking records, public event sharing, portfolio management, invoice visibility,
+                and photo delivery — in a single dashboard.
               </p>
               <p className="text-muted-foreground leading-relaxed">
-                Founded in 2022, EventSnap.ai has grown to serve over 10,000
-                photographers across 40+ countries. We're a remote-first team of
-                designers, engineers, and former photographers who care deeply
-                about making your business run better.
+                The product is especially relevant for professionals handling repeat bookings,
+                public event galleries, guest sharing, portfolio marketing, and day-to-day business administration.
+                The goal is simple: less admin friction, clearer client workflows, and more time spent on the actual work.
               </p>
             </div>
             <div className="rounded-3xl overflow-hidden">
               <img
                 src="https://images.unsplash.com/photo-1519741497674-611481863552?w=600&h=400&fit=crop&auto=format"
-                alt="Photography team at work"
+                alt="Photography workflow and business planning"
                 className="w-full h-72 object-cover"
               />
             </div>
           </div>
 
-          <div className="text-center mb-10">
-            <h2
-              className="text-2xl font-bold text-foreground"
-              style={{ fontFamily: "Poppins, sans-serif" }}
-            >
-              Meet the team
-            </h2>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {team.map(({ name, role, imgId }) => (
-              <div key={name} className="text-center">
-                <div className="w-24 h-24 rounded-2xl overflow-hidden mx-auto mb-4 bg-muted">
-                  <img
-                    src={`https://images.unsplash.com/photo-${imgId}?w=200&h=200&fit=crop&auto=format`}
-                    alt={name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <p
-                  className="font-semibold text-foreground"
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
+            {[
+              {
+                title: "Bookings",
+                text: "Manage incoming requests and keep each shoot tied to its client record, timeline, and financial status.",
+              },
+              {
+                title: "Galleries",
+                text: "Create shareable event albums, control guest access, and deliver photos through a public event flow.",
+              },
+              {
+                title: "Portfolio",
+                text: "Keep business details, services, and public portfolio content synced in the same system as the rest of the dashboard.",
+              },
+            ].map(({ title, text }) => (
+              <div key={title} className="rounded-2xl border border-border p-6 bg-muted/30">
+                <h3
+                  className="font-semibold mb-2"
                   style={{ fontFamily: "Poppins, sans-serif" }}
                 >
-                  {name}
-                </p>
-                <p className="text-muted-foreground text-sm mt-0.5">{role}</p>
+                  {title}
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{text}</p>
               </div>
             ))}
           </div>

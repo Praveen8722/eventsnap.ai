@@ -12,6 +12,7 @@ export function Navbar({ current, go }: { current: Page; go: (p: Page) => void }
     { label: "For Photographers", page: "for-photographers" },
     { label: "Pricing", page: "pricing" },
     { label: "About", page: "about" },
+    { label: "Contact", page: "contact" },
   ];
   const navigate = (p: Page) => {
     go(p);
@@ -57,7 +58,7 @@ export function Navbar({ current, go }: { current: Page; go: (p: Page) => void }
             onClick={() => navigate("login")}
             className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-3 py-2"
           >
-            Log In
+            Login
           </button>
           <PrimaryBtn onClick={() => navigate("signup")} size="sm">
             Get Started Free
@@ -88,7 +89,7 @@ export function Navbar({ current, go }: { current: Page; go: (p: Page) => void }
               onClick={() => navigate("login")}
               className="text-sm font-medium py-2.5 border border-border rounded-xl hover:bg-muted transition-colors"
             >
-              Log In
+              Login
             </button>
             <button
               onClick={() => navigate("signup")}
