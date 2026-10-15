@@ -6,3 +6,6 @@
 
 # Uploaded photos — stored in MongoDB GridFS, never in Git.
 uploads/
+
+# Direct Camera FTPS certificate + private key (never committed or baked in)
+certs/

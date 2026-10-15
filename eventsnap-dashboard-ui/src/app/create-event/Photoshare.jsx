@@ -18,6 +18,7 @@ import {
   createEvent as apiCreateEvent,
   deleteEvent as apiDeleteEvent,   
   deleteEventPhoto,
+  deleteEventPhotos,
   getEvent,
   getMyEvents,
   removeEventCover,
@@ -225,6 +226,24 @@ export function Photoshare() {
     }
   };
 
+  // Bulk delete from the gallery; resolves true once the photos are deleted.
+  const removePhotos = async (eventId, photoIds) => {
+    const n = photoIds.length;
+    if (!n) return false;
+    if (!window.confirm(`Delete ${n} photo${n === 1 ? "" : "s"}? Guests will no longer see ${n === 1 ? "it" : "them"}.`)) {
+      return false;
+    }
+    try {
+      const res = await deleteEventPhotos(eventId, photoIds);
+      mergeEvent(res.data.event);
+      show(`${n} photo${n === 1 ? "" : "s"} deleted`);
+      return true;
+    } catch (error) {
+      show(apiError(error, "Couldn't delete the photos."), "error");
+      return false;
+    }
+  };
+
   // Saves a cover change; `request` is the API call to make.
   const saveCover = async (eventId, request, successMessage) => {
     setCoverBusyId(eventId);
@@ -309,6 +328,7 @@ export function Photoshare() {
           onUpload={() => setModal({ type: "upload", id: openEvent.id })}
           onShare={() => setModal({ type: "share", id: openEvent.id })}
           onRemovePhoto={(photoId) => removePhoto(openEvent.id, photoId)}
+          onRemovePhotos={(photoIds) => removePhotos(openEvent.id, photoIds)}
           onSetCover={(file) => setCover(openEvent.id, file)}
           onSetCoverPhoto={(photoId) => setCoverFromPhoto(openEvent.id, photoId)}
           onUpdateSettings={(patch) => updateSettings(openEvent.id, patch)}
@@ -316,6 +336,7 @@ export function Photoshare() {
           camera={camera}
           phone={phone}
           faceProgress={faceProgress}
+          onRefresh={() => getEvent(openEvent.id).then((res) => mergeEvent(res.data.event)).catch(() => {})}
         />
       ) : (
         <div className="mt-4">

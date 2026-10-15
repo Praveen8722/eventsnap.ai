@@ -25,13 +25,15 @@ import {
 } from "../middleware/uploadCreateEvent.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
 import optionalAuthMiddleware from "../middlewares/optionalAuthMiddleware.js";
-import { streamCreateEventPhoto } from "../services/createEventPhotoStorage.js";
+import { streamCreateEventPhoto, streamS3Photo } from "../services/createEventPhotoStorage.js";
 
 // Mounted at /api/create-events (Dashboard → "Create Event").
 const router = express.Router();
 
 // Serves a stored cover/gallery photo (public: <img> tags can't send the
 // JWT; file ids are unguessable).
+// Photos stored in AWS S3 (redirect to a short-lived presigned URL).
+router.get("/photos/s3/*key", streamS3Photo);
 router.get("/photos/:fileId", streamCreateEventPhoto);
 // Public guest page (/share/<shareId>), by the event's permanent share id.
 // optionalAuthMiddleware only lets the owner's own visits/downloads be

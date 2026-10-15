@@ -31,6 +31,9 @@ import { useCopy } from "./ShareQrModal";
 import { useCoverPicker } from "./CoverPhoto";
 import { GuestAccessPanel } from "./GuestAccessPanel";
 import { CameraAutoUploadPanel } from "./CameraAutoUploadPanel";
+import { DirectCameraPanel } from "./DirectCameraPanel";
+import { MobileCameraPanel } from "./MobileCameraPanel";
+import { PeoplePanel } from "./PeoplePanel";
 
 function Lightbox({ photos, index, onIndex, onClose }) {
   const photo = photos[index];
@@ -108,13 +111,26 @@ function Lightbox({ photos, index, onIndex, onClose }) {
   );
 }
 
-export function EventGallery({ event, onBack, onUpload, onShare, onRemovePhoto, onSetCover, onSetCoverPhoto, onUpdateSettings, coverBusy, camera, phone, faceProgress }) {
+export function EventGallery({ event, onBack, onUpload, onShare, onRemovePhoto, onRemovePhotos, onSetCover, onSetCoverPhoto, onUpdateSettings, coverBusy, camera, phone, faceProgress, onRefresh }) {
   const url = publicGalleryUrl(event.slug);
   const coverPicker = useCoverPicker(onSetCover);
   const isCover = (photo) => event.cover && (event.cover === photo.src || event.cover === photo.thumb);
   const count = photoCount(event);
   const { copied, copy } = useCopy();
   const [lightbox, setLightbox] = useState(null);
+  // Bulk delete: ids of the ticked photos (only those still in the gallery).
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [deleting, setDeleting] = useState(false);
+  const selected = selectedIds.filter((id) => event.photos?.some((p) => p.id === id));
+  const toggleSelected = (id) =>
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  const deleteSelected = async () => {
+    if (!selected.length || deleting) return;
+    setDeleting(true);
+    const ok = await onRemovePhotos(selected);
+    setDeleting(false);
+    if (ok) setSelectedIds([]);
+  };
 
   const stats = [
     { label: "Photos", value: count, icon: HiOutlinePhotograph },
@@ -138,7 +154,7 @@ export function EventGallery({ event, onBack, onUpload, onShare, onRemovePhoto, 
       {event.cover ? (
         <div className="relative mt-3 h-36 sm:h-48 lg:h-60 rounded-2xl overflow-hidden bg-gray-100 border-2 border-gray-200">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={event.cover} alt={`${event.name} cover`} className="w-full h-full object-cover" />
+          <img src={event.cover} alt={`${event.name} cover`} className="w-full h-full object-contain" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
           <div className="absolute bottom-3 right-3 flex gap-2">
             <button
@@ -227,6 +243,8 @@ export function EventGallery({ event, onBack, onUpload, onShare, onRemovePhoto, 
         {/* QR + link panel: above the photos on small screens, beside them on large */}
         <aside className="lg:order-2 space-y-4">
           {camera && <CameraAutoUploadPanel event={event} camera={camera} phone={phone} />}
+          <DirectCameraPanel event={event} onPhotosReceived={onRefresh} />
+          <MobileCameraPanel event={event} onPhotosReceived={onRefresh} />
           <div className="bg-white rounded-2xl border-2 border-gray-200 p-5">
             <h2 className="font-bold text-[#1E1E1E]">Event QR Code</h2>
             <p className="text-sm text-gray-500 mt-0.5">Print it or display it at the venue.</p>
@@ -287,16 +305,44 @@ export function EventGallery({ event, onBack, onUpload, onShare, onRemovePhoto, 
               }}
             />
           )}
+          <PeoplePanel
+            event={event}
+            onOpenPhoto={(photoId) => {
+              const i = (event.photos || []).findIndex((ph) => ph.id === photoId);
+              if (i >= 0) setLightbox(i);
+            }}
+          />
         </aside>
 
-        {/* Photo grid */}
+        {/* Photo grid */} 
         <section className="lg:order-1 lg:col-span-2 bg-white rounded-2xl border-2 border-gray-200 p-4 sm:p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-[#1E1E1E]">Gallery</h2>
             {event.photos?.length > 0 && (
-              <p className="text-xs text-gray-400">
-                Showing {event.photos.length} of {count.toLocaleString("en-IN")}
-              </p>
+              <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+                <p className="text-xs text-gray-400">
+                  Showing {event.photos.length} of {count.toLocaleString("en-IN")}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds(selected.length === event.photos.length ? [] : event.photos.map((p) => p.id))}
+                  disabled={deleting}
+                  className="text-xs font-semibold text-[#6C63FF] hover:underline disabled:opacity-50"
+                >
+                  {selected.length === event.photos.length ? "Clear" : "Select all"}
+                </button>
+                {selected.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={deleteSelected}
+                    disabled={deleting}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600 disabled:opacity-60 transition-colors"
+                  >
+                    <HiOutlineTrash />
+                    {deleting ? "Deleting…" : `Delete ${selected.length} selected`}
+                  </button>
+                )}
+              </div>
             )}
           </div>
 
@@ -320,7 +366,12 @@ export function EventGallery({ event, onBack, onUpload, onShare, onRemovePhoto, 
           ) : (
             <div className="columns-2 sm:columns-3 xl:columns-4 2xl:columns-5 gap-3">
               {event.photos.map((photo, i) => (
-                <div key={photo.id} className="group relative mb-3 break-inside-avoid rounded-xl overflow-hidden bg-gray-100">
+                <div
+                  key={photo.id}
+                  className={`group relative mb-3 break-inside-avoid rounded-xl overflow-hidden bg-gray-100 ${
+                    selected.includes(photo.id) ? "ring-[3px] ring-[#6C63FF] ring-offset-2" : ""
+                  }`}
+                >
                   <button type="button" onClick={() => setLightbox(i)} className="block w-full" aria-label="View photo">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -367,6 +418,20 @@ export function EventGallery({ event, onBack, onUpload, onShare, onRemovePhoto, 
                       <HiOutlineTrash />
                     </button>
                   </div>
+                  <label
+                    className={`absolute bottom-2 left-2 w-7 h-7 rounded-full bg-white/90 shadow flex items-center justify-center cursor-pointer transition-opacity ${
+                      selected.includes(photo.id) ? "" : "sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(photo.id)}
+                      onChange={() => toggleSelected(photo.id)}
+                      disabled={deleting}
+                      aria-label="Select photo"
+                      className="w-4 h-4 cursor-pointer accent-[#6C63FF]"
+                    />
+                  </label>
                 </div>
               ))}
             </div>
