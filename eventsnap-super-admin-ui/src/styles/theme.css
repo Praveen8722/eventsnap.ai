@@ -1,0 +1,98 @@
+:root {
+  --font-size: 16px;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --background: #ffffff;
+  --foreground: oklch(0.145 0 0);
+  --border: rgba(0, 0, 0, 0.1);
+  --ring: oklch(0.708 0 0);
+  --radius: 0.625rem;
+}
+
+@theme {
+  --font-sans: 'Poppins', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@utility scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer base {
+  html {
+    font-size: var(--font-size);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+/* Base typography. Not applied to elements that have an ancestor with a Tailwind text class. */
+@layer base {
+  :where(:not(:has([class*=' text-']), :not(:has([class^='text-'])))) {
+    h1 {
+      font-size: var(--text-2xl);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    h2 {
+      font-size: var(--text-xl);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    h3 {
+      font-size: var(--text-lg);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    h4,
+    p,
+    label,
+    button,
+    input {
+      font-size: var(--text-base);
+      line-height: 1.5;
+    }
+
+    h4,
+    label,
+    button {
+      font-weight: var(--font-weight-medium);
+    }
+
+    p,
+    input {
+      font-weight: var(--font-weight-normal);
+    }
+  }
+}

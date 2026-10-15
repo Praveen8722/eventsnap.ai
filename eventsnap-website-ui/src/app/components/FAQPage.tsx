@@ -20,7 +20,7 @@ export function FAQPage({ go }: { go: (p: Page) => void }) {
             Frequently asked questions
           </h1>
           <p className="text-white/65 text-lg">
-            Can't find what you're looking for?{" "}
+            Need something more specific?{" "}
             <button
               onClick={() => go("contact")}
               className="underline hover:no-underline"
@@ -28,7 +28,7 @@ export function FAQPage({ go }: { go: (p: Page) => void }) {
             >
               Contact us
             </button>{" "}
-            and we'll help.
+            and we’ll help.
           </p>
         </div>
       </section>

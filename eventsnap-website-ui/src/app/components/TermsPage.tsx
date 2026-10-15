@@ -4,35 +4,35 @@ export function TermsPage() {
   return (
     <PolicyPage
       title="Terms of Service"
-      lastUpdated="January 1, 2025"
+      lastUpdated="Placeholder — update before launch"
       sections={[
         {
-          h: "1. Acceptance of Terms",
-          p: "By accessing or using EventSnap.ai, you agree to be bound by these Terms of Service and our Privacy Policy. If you do not agree to these terms, please do not use our services. These terms apply to all users of the platform.",
+          h: "1. Introduction",
+          p: "This Terms of Service draft is a placeholder for the EventSnap product and company website. It should be reviewed, customized, and approved by legal counsel before public release. It outlines the basic relationship between the service operator and users of the product.",
         },
         {
-          h: "2. Account Registration",
-          p: "You must provide accurate and complete information when creating an account. You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. You must notify us immediately of any unauthorized access.",
+          h: "2. Account Use",
+          p: "Users are responsible for creating accurate account details, keeping credentials secure, and using the dashboard only for legitimate photography business activities. Access to booking records, gallery uploads, invoices, and personal client data should be restricted to authorized users.",
         },
         {
-          h: "3. Acceptable Use",
-          p: "You agree not to use EventSnap.ai for any unlawful purpose or in any way that could harm, disable, or impair the platform. You may not attempt to gain unauthorized access to any part of our services, systems, or networks, or engage in any activity that disrupts our services.",
+          h: "3. Product Scope",
+          p: "EventSnap provides a dashboard for managing bookings, inquiries, invoices, public portfolio content, event galleries, and related operational tasks. The service should not be used for unlawful activity, abusive behavior, or unauthorized access to other users’ records or files.",
         },
         {
-          h: "4. Intellectual Property",
-          p: "EventSnap.ai and its original content, features, and functionality are owned by EventSnap.ai, Inc. and are protected by international copyright, trademark, and other laws. You retain ownership of any content you upload to our platform.",
+          h: "4. Content and Data",
+          p: "Users retain ownership of their own content and business data, including uploaded photography, portfolio content, and client records. The service operator may store and process this data to provide the requested functionality and support operations.",
         },
         {
-          h: "5. Payment Terms",
-          p: "Paid subscriptions are billed in advance on a monthly or annual basis. All fees are non-refundable except as described in our Refund Policy. We reserve the right to change our pricing with 30 days' notice. Failure to pay may result in service suspension.",
+          h: "5. Pricing and Billing",
+          p: "Any pricing model, subscription plan, or billing arrangement should be stated clearly in a final commercial agreement or pricing page. This repository does not define final pricing terms, so placeholder pricing statements should be replaced before launch.",
         },
         {
-          h: "6. Termination",
-          p: "We may terminate or suspend your account at any time for violation of these Terms. You may cancel your account at any time from your account settings. Upon termination, your right to use the service will immediately cease.",
+          h: "6. Service Availability",
+          p: "The platform may experience planned maintenance or temporary downtime. The operator should communicate outages or significant service changes in a practical, transparent way and should maintain a reasonable troubleshooting process for customer support.",
         },
         {
-          h: "7. Limitation of Liability",
-          p: "EventSnap.ai shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of or inability to use our services. Our total liability to you shall not exceed the amount you paid us in the 12 months prior to the claim.",
+          h: "7. Limitation and Review",
+          p: "This document is intentionally general and should be expanded for your jurisdiction, business model, and launch requirements. Final terms should cover liability, dispute resolution, payment terms, termination, and compliance with local legal requirements before the site is made public.",
         },
       ]}
     />

@@ -4,35 +4,35 @@ export function PrivacyPage() {
   return (
     <PolicyPage
       title="Privacy Policy"
-      lastUpdated="January 1, 2025"
+      lastUpdated="Placeholder — update before launch"
       sections={[
         {
-          h: "1. Information We Collect",
-          p: "We collect information you provide directly to us, such as when you create an account, make a booking, or contact our support team. This includes your name, email address, payment information, and any content you upload to our platform such as photos and client details.",
+          h: "1. Overview",
+          p: "This draft Privacy Policy is a placeholder for the EventSnap marketing site and product. It should be reviewed by your legal counsel before public launch. It describes the types of account, booking, portfolio, and contact data that may be collected in a photography business workflow.",
         },
         {
-          h: "2. How We Use Your Information",
-          p: "We use the information we collect to provide, maintain, and improve our services; process transactions; send transactional and promotional messages; monitor and analyze usage patterns; and comply with legal obligations. We never sell your personal data to third parties.",
+          h: "2. Information We Collect",
+          p: "EventSnap may collect account details such as name, email, phone, business details, profile images, portfolio content, and contact form submissions. For photographers using the dashboard, it may also store booking information, inquiry records, invoice data, event gallery uploads, and public share settings associated with a client or event.",
         },
         {
-          h: "3. Data Sharing",
-          p: "We may share your information with trusted third-party service providers who assist us in operating our platform, such as Stripe for payment processing and cloud storage providers. These parties are contractually obligated to protect your data and may not use it for any other purpose.",
+          h: "3. How We Use Information",
+          p: "We use this data to operate the product, manage bookings and inquiries, deliver gallery access, maintain portfolio pages, support invoicing, and improve the dashboard experience. Personal information is not used for unrelated business purposes without consent or a legal basis.",
         },
         {
-          h: "4. Data Retention",
-          p: "We retain your data for as long as your account is active or as needed to provide services. You may request deletion of your account and associated data at any time by contacting us at privacy@eventsnap.ai. We will process deletion requests within 30 days.",
+          h: "4. Sharing and Storage",
+          p: "Information may be shared with service providers required to run the product, such as cloud hosting, email delivery, or database infrastructure. We should keep any third-party provider list explicit and ensure appropriate data-processing terms are in place before launch.",
         },
         {
-          h: "5. Security",
-          p: "We implement industry-standard security measures including AES-256 encryption at rest and in transit, SOC 2 Type II compliant infrastructure, regular penetration testing, and access controls. However, no method of transmission over the internet is 100% secure.",
+          h: "5. Data Retention",
+          p: "Retention periods should be documented in your actual privacy policy and should align with your business needs, legal obligations, and support requirements. You may define how long inquiry records, gallery content, and profile details are stored before they are removed or archived.",
         },
         {
-          h: "6. Your Rights",
-          p: "Depending on your location, you may have the right to access, correct, or delete your personal data; object to or restrict certain processing; and request data portability. To exercise these rights, contact us at privacy@eventsnap.ai.",
+          h: "6. Security and Access",
+          p: "EventSnap should use secure storage, access controls, and encrypted transport for user and business data. This product is already built around account-specific access to bookings, galleries, and invoices, and these protections should remain in place for production use.",
         },
         {
-          h: "7. Contact Us",
-          p: "If you have any questions about this Privacy Policy, please contact our Data Protection team at privacy@eventsnap.ai or by mail at EventSnap.ai, Inc., 340 Pine Street, San Francisco, CA 94104, USA.",
+          h: "7. Rights and Contact",
+          p: "Depending on your jurisdiction, users may have rights to request access, correction, deletion, or portability of personal data. Replace this section with the actual contact details you want to publish for privacy requests and support, such as privacy@yourdomain.com.",
         },
       ]}
     />

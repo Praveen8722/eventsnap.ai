@@ -4,50 +4,50 @@ import { PURPLE, CORAL } from "./theme";
 export const FEATURES_DATA = [
   {
     icon: Calendar,
-    title: "Smart Booking Management",
-    desc: "Accept bookings 24/7 with automated confirmations, reminders, and scheduling — no back-and-forth emails.",
+    title: "Smart Booking dashboard",
+    desc: "Keep bookings, inquiry records, and event details together in one operational dashboard.",
     color: PURPLE,
   },
   {
     icon: Image,
-    title: "Client Galleries",
-    desc: "Deliver stunning online galleries with password protection, download controls, and effortless sharing.",
+    title: "Event galleries",
+    desc: "Create public gallery links, manage cover photos, and control guest access for each event.",
     color: CORAL,
   },
   {
     icon: CreditCard,
-    title: "Payments & Invoicing",
-    desc: "Send professional invoices, collect deposits, and accept online payments directly into your bank.",
+    title: "Invoices and balances",
+    desc: "Track payment totals, outstanding balances, and booking-level financial status in one place.",
     color: "#22c55e",
   },
   {
     icon: Layers,
-    title: "Kanban Workflows",
-    desc: "Keep every project on track with visual Kanban boards, task checklists, and automated workflow stages.",
+    title: "Portfolio builder",
+    desc: "Publish a public portfolio with portfolio sections, business details, and a clean online presence.",
     color: "#f59e0b",
   },
   {
     icon: Users,
-    title: "Client CRM",
-    desc: "Centralized client database with notes, history, questionnaires, contracts, and communication logs.",
+    title: "Photographer profile tools",
+    desc: "Store business profile details, profile photos, and portfolio information tied to the signed-in account.",
     color: "#06b6d4",
   },
   {
     icon: BarChart3,
-    title: "Business Analytics",
-    desc: "Understand your revenue trends, booking performance, and business growth all at a single glance.",
+    title: "Business overview",
+    desc: "Monitor upcoming shoots, active bookings, and the state of the current workload without extra tools.",
     color: "#a855f7",
   },
   {
     icon: FileText,
-    title: "Contracts & Proposals",
-    desc: "Create, send, and collect e-signatures on professional contracts and custom quotes from any device.",
+    title: "Inquiry and lead flow",
+    desc: "Capture leads and client requests in the same system that manages bookings and follow-up work.",
     color: "#ec4899",
   },
   {
     icon: Smartphone,
-    title: "Mobile-First Design",
-    desc: "Manage your business from anywhere. Full-featured iOS and Android apps for photographers on the go.",
+    title: "Android camera upload",
+    desc: "Move new camera photos directly into a chosen event gallery while working on location.",
     color: "#10b981",
   },
 ];
@@ -55,20 +55,20 @@ export const FEATURES_DATA = [
 export const STEPS_DATA = [
   {
     step: "01",
-    title: "Create Your Profile",
-    desc: "Set up your EventSnap.ai account in minutes. Add your services, pricing packages, portfolio images, and availability calendar.",
+    title: "Create the business profile",
+    desc: "Set up your photographer account, business details, and portfolio so inquiries and bookings have a clean home.",
     icon: Camera,
   },
   {
     step: "02",
-    title: "Share Your Booking Link",
-    desc: "Send clients your personalized booking page. They choose a package, pick a date, sign a contract, and pay a deposit — automatically.",
+    title: "Track inquiries and bookings",
+    desc: "Use the dashboard to manage client requests, booking details, and follow-up activity from one place.",
     icon: Globe,
   },
   {
     step: "03",
-    title: "Shoot, Deliver & Get Paid",
-    desc: "Upload edited galleries directly to clients, send invoices for final balances, and collect payment. EventSnap handles the follow-up.",
+    title: "Share galleries and manage delivery",
+    desc: "Upload event footage, assign public share links, and keep guest access settings in sync with each event.",
     icon: TrendingUp,
   },
 ];
@@ -125,31 +125,31 @@ export const PRICING_DATA = [
 
 export const TESTIMONIALS_DATA = [
   {
-    name: "Sarah Mitchell",
-    role: "Wedding Photographer, NYC",
+    name: "Workshop client",
+    role: "Photographer",
     avatar:
       "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=80&h=80&fit=crop&auto=format",
     rating: 5,
     quote:
-      "EventSnap transformed how I run my business. I went from losing bookings in my email to having everything perfectly organized. My revenue grew 40% in just 6 months.",
+      "EventSnap gave us one place to track bookings, manage event galleries, and keep our portfolio current without bouncing between tools.",
   },
   {
-    name: "Marcus Chen",
-    role: "Commercial Photographer, Los Angeles",
+    name: "Event team",
+    role: "Production workflow",
     avatar:
       "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&auto=format",
     rating: 5,
     quote:
-      "The client gallery feature alone is worth every penny. My clients love their photo delivery experience, and I love that payments are fully automated.",
+      "The dashboard makes it easier to keep every event organized, from inquiry through gallery delivery and invoice tracking.",
   },
   {
-    name: "Priya Sharma",
-    role: "Portrait & Events Photographer, Chicago",
+    name: "Studio owner",
+    role: "Photography business",
     avatar:
       "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=80&h=80&fit=crop&auto=format",
     rating: 5,
     quote:
-      "I used to spend 10+ hours every week on admin alone. With EventSnap, my bookings, invoices, and client communications practically run themselves.",
+      "We needed a tool that handled the operational side of work, not just image storage. EventSnap fits that workflow well.",
   },
 ];
 
@@ -187,3 +187,4 @@ export const FAQS_DATA = [
     a: "Yes. EventSnap supports CSV import for contacts and bookings, and our team offers free migration assistance for Studio plan subscribers to make your transition as smooth as possible.",
   },
 ];
+

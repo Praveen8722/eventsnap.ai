@@ -15,12 +15,12 @@ export function FeaturesPage({ go }: { go: (p: Page) => void }) {
             className="text-4xl sm:text-5xl font-bold text-white mb-5"
             style={{ fontFamily: "Poppins, sans-serif" }}
           >
-            Built for the way photographers actually work
+            The dashboard photographers actually use to run the business
           </h1>
           <p className="text-white/65 text-lg max-w-2xl mx-auto mb-8">
-            Every feature in EventSnap.ai was designed with real photographers
-            in mind — solving real problems, reducing real admin, and helping
-            you earn more.
+            EventSnap brings together the workflows that happen after the shoot:
+            bookings, inquiries, portfolio pages, event galleries, invoicing,
+            guest access controls, and photo delivery — all in one place.
           </p>
           <PrimaryBtn onClick={() => go("signup")} size="lg">
             Start Free Trial <ArrowRight className="w-4 h-4" />
@@ -35,109 +35,109 @@ export function FeaturesPage({ go }: { go: (p: Page) => void }) {
               {
                 icon: Calendar,
                 color: PURPLE,
-                title: "Smart Booking Management",
-                desc: "Accept bookings 24/7 from a beautiful, branded booking page. Clients choose a package, pick a date, sign a contract, and pay a deposit — all automatically.",
+                title: "Smart Booking & inquiry management",
+                desc: "Track incoming inquiries, manage booking details, payment status, and client timelines without chasing updates across email and spreadsheets.",
                 bullets: [
-                  "Custom booking page URL",
-                  "Package and pricing display",
-                  "Real-time availability calendar",
-                  "Automated confirmations and reminders",
+                  "Client booking records",
+                  "Status history and follow-up tracking",
+                  "Payment and remaining balance visibility",
+                  "Owner-scoped dashboard access",
                 ],
               },
               {
                 icon: Image,
                 color: CORAL,
-                title: "Client Gallery Delivery",
-                desc: "Deliver edited photos in stunning, password-protected online galleries. Control downloads, sharing, and expiry from your dashboard.",
+                title: "Event photo galleries",
+                desc: "Create shareable event galleries with public links, cover photos, guest access rules, and photo downloads that can be enabled or restricted by event.",
                 bullets: [
-                  "Unlimited photo uploads (Pro)",
-                  "Password and expiry controls",
-                  "HD & print-ready downloads",
-                  "Mobile-optimized viewing experience",
+                  "Public share links and QR codes",
+                  "Event cover and gallery uploads",
+                  "Guest registration and download settings",
+                  "Photo delivery controls by event",
                 ],
               },
               {
                 icon: CreditCard,
                 color: "#22c55e",
-                title: "Payments & Invoicing",
-                desc: "Collect deposits and final payments online via Stripe. Send professional invoices and automate payment reminders so you always get paid on time.",
+                title: "Invoices and payment tracking",
+                desc: "Monitor booking invoices, payment totals, outstanding balances, and reminders from one dashboard built around actual client work.",
                 bullets: [
-                  "Stripe integration for online payments",
-                  "Deposit and balance automation",
-                  "Professional branded invoices",
-                  "Automated payment reminders",
+                  "Invoice and payment history",
+                  "Balance tracking by booking",
+                  "Reminder workflow support",
+                  "Financial visibility across active bookings",
                 ],
               },
               {
                 icon: Layers,
                 color: "#f59e0b",
-                title: "Kanban Project Workflows",
-                desc: "Visualize every project from inquiry to delivery on a Kanban board. Move cards, assign tasks, and track progress across all your active shoots.",
+                title: "Portfolio website builder",
+                desc: "Publish a photographer portfolio with service sections, gallery items, contact details, and a shareable public profile that matches your brand.",
                 bullets: [
-                  "Drag-and-drop Kanban boards",
-                  "Custom workflow stages",
-                  "Task checklists per project",
-                  "Automated stage transitions",
+                  "Portfolio editing tools",
+                  "Public profile and slug URLs",
+                  "Photo gallery management",
+                  "Brand and contact details",
                 ],
               },
               {
                 icon: Users,
                 color: "#06b6d4",
-                title: "Client Relationship Manager",
-                desc: "Keep all your client information, shoot history, notes, and communication in one organized place. Never lose a detail again.",
+                title: "Client and business profile data",
+                desc: "Keep key data for each account in one secure place — name, business profile, contact details, and portfolio information tied to your dashboard account.",
                 bullets: [
-                  "Complete client profiles",
-                  "Shoot and invoice history",
-                  "Internal notes and tags",
-                  "Contact form integrations",
+                  "Photographer profile management",
+                  "Business and profile photo uploads",
+                  "Company website sync support",
+                  "Stored account data for business use",
                 ],
               },
               {
                 icon: BarChart3,
                 color: "#a855f7",
-                title: "Business Analytics",
-                desc: "Track revenue, booking trends, gallery views, and client retention with visual dashboards and exportable reports.",
+                title: "Dashboard insights",
+                desc: "Review the volume of bookings, upcoming work, delivery status, and account activity from the dashboard overview without leaving the product.",
                 bullets: [
-                  "Revenue and income tracking",
-                  "Booking conversion analytics",
-                  "Monthly and annual reports",
-                  "Exportable PDF and CSV reports",
+                  "Upcoming shoots dashboard",
+                  "Booking status overview",
+                  "Business summary at a glance",
+                  "Status updates by client and event",
                 ],
               },
               {
                 icon: FileText,
                 color: "#ec4899",
-                title: "Contracts & E-Signatures",
-                desc: "Create professional contracts from templates, customize them for each client, and collect legally binding e-signatures instantly.",
+                title: "Inquiries and sales follow-up",
+                desc: "Capture leads, respond to inquiries, and keep each client conversation tied to the corresponding booking or portfolio source.",
                 bullets: [
-                  "Professional contract templates",
-                  "Custom contract fields",
-                  "Legally binding e-signatures",
-                  "Automatic contract archiving",
+                  "Inquiry collection",
+                  "Portfolio-sourced bookings",
+                  "Customer communication workflow",
+                  "Follow-up tracking", 
                 ],
               },
               {
                 icon: Bell,
                 color: "#f59e0b",
-                title: "Automated Workflows",
-                desc: "Set up email automations and reminders that run on autopilot — from booking confirmation to gallery delivery follow-up.",
+                title: "Notifications and reminders",
+                desc: "Stay on top of bookings, updates, and work status without needing a separate notification system or external tool.",
                 bullets: [
-                  "Booking confirmation emails",
-                  "Pre-shoot reminder sequences",
-                  "Invoice follow-up automations",
-                  "Gallery delivery notifications",
+                  "Dismissible notifications",
+                  "Booking status changes",
+                  "Follow-up reminders",
+                  "Inbox-style operational updates",
                 ],
               },
               {
                 icon: Smartphone,
                 color: "#10b981",
-                title: "Mobile App",
-                desc: "Full-featured iOS and Android app so you can manage your business from anywhere — between shoots, on location, or at home.",
+                title: "Android camera auto-upload",
+                desc: "Upload new camera photos directly into a selected event gallery from a connected Android device, without manual export for every batch.",
                 bullets: [
-                  "iOS and Android native apps",
-                  "Real-time booking notifications",
-                  "Quick invoice creation on mobile",
-                  "Gallery upload from phone",
+                  "Background photo sync",
+                  "Selected event targeting",
+                  "Avoids duplicate uploads",
+                  "Designed for on-location photo work",
                 ],
               },
             ].map(({ icon: Icon, color, title, desc, bullets }) => (

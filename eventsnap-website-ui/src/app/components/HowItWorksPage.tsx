@@ -12,70 +12,70 @@ export function HowItWorksPage({ go }: { go: (p: Page) => void }) {
       title: "Create Your EventSnap.ai Account",
       desc: "Sign up free in under 2 minutes. No credit card needed. Add your studio name, logo, and services.",
       details: [
-        "Choose your account type (solo or studio)",
-        "Set your services and pricing packages",
-        "Upload portfolio photos for your booking page",
-        "Configure your availability calendar",
+        "Add business profile and contact details",
+        "Upload profile and studio photos",
+        "Set up portfolio and service descriptions",
+        "Keep your profile ready for inquiries and bookings",
       ],
     },
     {
       n: "02",
       icon: Globe,
-      title: "Set Up Your Booking Page",
-      desc: "Your custom booking page is live instantly. Share the link with clients or embed it on your existing website.",
+      title: "Manage inquiries and bookings",
+      desc: "Use the dashboard to track client messages, booking requests, status changes, and the booking details tied to each shoot or event.",
       details: [
-        "Branded booking page with your URL",
-        "Package selection with pricing",
-        "Availability calendar integration",
-        "Automated deposit collection",
+        "Collect and organize inquiries",
+        "Keep booking records in one place",
+        "Confirm booking status and timelines",
+        "Track payment and balance progress",
       ],
     },
     {
       n: "03",
       icon: FileText,
-      title: "Clients Book & Sign Contracts",
-      desc: "Clients pick a package, choose a date, e-sign your contract, and pay their deposit — all in one smooth flow.",
+      title: "Build the event or portfolio flow",
+      desc: "Create event galleries for weddings, shoots, and brand work, or publish a portfolio page that showcases your services and pricing in a clean public format.",
       details: [
-        "E-signature on custom contracts",
-        "Deposit auto-collected at booking",
-        "Booking confirmation sent instantly",
-        "Calendar invite added for both parties",
+        "Create and update event records",
+        "Upload gallery photos and cover images",
+        "Customize public portfolio content",
+        "Control gallery and portfolio visibility",
       ],
     },
     {
       n: "04",
       icon: Image,
-      title: "Shoot & Deliver Galleries",
-      desc: "After the shoot, upload edited photos to EventSnap. Your client gets a beautiful gallery link via email.",
+      title: "Share gallery access with clients or guests",
+      desc: "Each event can use a public share link, QR code access, guest registration settings, and optional download controls depending on how you want the event to be viewed.",
       details: [
-        "Bulk photo upload from any device",
-        "Password-protected client galleries",
-        "Download controls and expiry settings",
-        "Mobile-optimized gallery viewing",
+        "Public event links and QR codes",
+        "Download restrictions and guest settings",
+        "Guest registration support",
+        "Public share flow for event viewing",
       ],
     },
     {
       n: "05",
       icon: CreditCard,
-      title: "Invoice & Collect Final Payment",
-      desc: "Send a final invoice with one click. Automated reminders follow up so you get paid without awkward conversations.",
+      title: "Track invoices and payments",
+      desc: "Keep the money side of each booking visible in the dashboard with invoice records, payment totals, outstanding balances, and reminders.",
       details: [
-        "Professional branded invoices",
-        "Online payment via Stripe",
-        "Automated payment reminders",
-        "Payment confirmation receipts",
+        "Invoice history and balance tracking",
+        "Payment totals by booking",
+        "Reminder support for follow-ups",
+        "Clear financial overview for each client",
       ],
     },
     {
       n: "06",
       icon: BarChart3,
-      title: "Review & Grow",
-      desc: "Check your analytics dashboard to see what's working, which packages are most popular, and where to focus next.",
+      title: "Review the workflow and grow from there",
+      desc: "Use the overview dashboard to monitor upcoming shoots, active bookings, gallery delivery, and day-to-day business activity without needing separate tools.",
       details: [
-        "Revenue and booking dashboards",
-        "Client source tracking",
-        "Package performance analytics",
-        "Monthly business summary emails",
+        "Upcoming bookings overview",
+        "Active work and status tracking",
+        "Operational notifications",
+        "Simple business visibility in one dashboard",
       ],
     },
   ];
@@ -89,11 +89,11 @@ export function HowItWorksPage({ go }: { go: (p: Page) => void }) {
             className="text-4xl sm:text-5xl font-bold text-white mb-5"
             style={{ fontFamily: "Poppins, sans-serif" }}
           >
-            From signup to your first booking in under 10 minutes
+            From first inquiry to final gallery delivery
           </h1>
           <p className="text-white/65 text-lg">
-            No technical skills needed. EventSnap.ai is designed to be intuitive
-            so you can start working with it immediately.
+            EventSnap is designed around the real lifecycle of a photography business:
+            sell the work, manage the booking, deliver the gallery, and keep the admin out of the way.
           </p>
         </div>
       </section>

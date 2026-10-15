@@ -1,0 +1,31 @@
+{
+  "name": "eventsnap-super-admin-backend",
+  "version": "1.0.0",
+  "description": "Express + MongoDB API for the EventSnap.ai Super Admin Panel (eventsnap-super-admin-ui).",
+  "main": "index.js",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "dev:memory": "node --watch index.js --memory",
+    "seed": "node src/seed/seed.js",
+    "test": "node --test --test-concurrency=1 \"test/**/*.test.js\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.11.2"
+  },
+  "devDependencies": {
+    "mongodb-memory-server": "^11.3.0"
+  }
+}
