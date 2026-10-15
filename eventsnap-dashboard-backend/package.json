@@ -5,6 +5,7 @@
   "scripts": {
     "start": "nodemon index.js",
     "dev": "nodemon index.js",
+    "direct-camera": "node src/directCamera/index.js",
     "test": "node --test"
   },
   "keywords": [],
@@ -12,6 +13,12 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1150.0",
+    "@aws-sdk/s3-request-presigner": "^3.1150.0",
+    "@tensorflow/tfjs-backend-wasm": "^4.22.0",
+    "@tensorflow/tfjs-converter": "^4.22.0",
+    "@tensorflow/tfjs-core": "^4.22.0",
+    "@vladmandic/human": "^3.3.6",
     "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
@@ -22,7 +29,8 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.0.1",
     "multer": "^2.4.0",
-    "nodemailer": "^7.0.13"
+    "nodemailer": "^7.0.13",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "nodemon": "^3.1.11"

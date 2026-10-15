@@ -337,7 +337,9 @@ const Model = ({
       ? `\n\nPayment options:\n${payLines.map(([label, value]) => `${label}: ${value}`).join("\n")}`
       : "";
     setReminderForm({
-      channel: hasEmail ? "email" : hasPhone ? "sms" : "email",
+      // SMS is hidden for now, so a phone-only booking starts on WhatsApp.
+      // channel: hasEmail ? "email" : hasPhone ? "sms" : "email",
+      channel: hasEmail ? "email" : hasPhone ? "whatsapp" : "email",
       message:
         `Hi ${booking.clientName}, a friendly reminder for your ${booking.eventType} ` +
         `booking (${booking.bookingId}) on ${when}` +
@@ -2125,13 +2127,14 @@ const Model = ({
                     icon: "✉️",
                     ok: !!booking.email,
                   },
-                  { id: "sms", label: "SMS", icon: "💬", ok: !!booking.phone },
-                  {
-                    id: "both",
-                    label: "Both",
-                    icon: "📨",
-                    ok: !!booking.email && !!booking.phone,
-                  },
+                  // SMS is hidden for now (no SMS provider is set up yet).
+                  // { id: "sms", label: "SMS", icon: "💬", ok: !!booking.phone },
+                  // {
+                  //   id: "both",
+                  //   label: "Both",
+                  //   icon: "📨",
+                  //   ok: !!booking.email && !!booking.phone,
+                  // },
                   {
                     id: "whatsapp",
                     label: "WhatsApp",

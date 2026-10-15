@@ -5,8 +5,11 @@ import CreateEvent, {
   PHOTO_DOWNLOAD_OPTIONS,
 } from "../models/CreateEvent.js";
 import CreateEventGuestRegistration from "../models/CreateEventGuestRegistration.js";
+import { removeDirectCameraData } from "../models/DirectCamera.js";
 import {
-  discardPhotos,
+  commitUploads,
+  discardUploads,
+  recordPendingDeletions,
   removeUnreferencedPhotos,
   sendPhotoDownload,
 } from "../services/createEventPhotoStorage.js";
@@ -186,7 +189,7 @@ export const createEvent = async (req, res) => {
     const fields = {};
     const error = applyFields(fields, body, { creating: true });
     if (error) {
-      await discardPhotos([coverUrl]);
+      await discardUploads(req);
       return res.status(400).json({ success: false, message: error });
     }
 
@@ -204,6 +207,7 @@ export const createEvent = async (req, res) => {
         if (err?.code !== 11000 || attempt >= 2) throw err;
       }
     }
+    await commitUploads(req);
 
     res.status(201).json({
       success: true,
@@ -211,7 +215,7 @@ export const createEvent = async (req, res) => {
       event: serializeEvent(event, { withPhotos: true }),
     });
   } catch (error) {
-    await discardPhotos([coverUrl]);
+    await discardUploads(req);
     serverError(res, error);
   }
 };
@@ -502,15 +506,27 @@ export const updateEvent = async (req, res) => {
 export const deleteEvent = async (req, res) => {
   try {
     const filter = ownEvent(req);
-    const event = filter && (await CreateEvent.findOneAndDelete(filter));
+    const existing = filter && (await CreateEvent.findOne(filter).select("coverPhoto photos.url photos.size"));
+    if (!existing) return notFound(res);
+    // Storage quota: files are recorded as pending deletion first (see
+    // recordPendingDeletions), so a crash can't lose track of them.
+    await recordPendingDeletions(
+      req.userId,
+      [existing.coverPhoto, ...existing.photos.map((p) => p.url)],
+      new Map(existing.photos.map((p) => [p.url, p.size]))
+    );
+    const event = await CreateEvent.findOneAndDelete(filter);
     if (!event) return notFound(res);
 
     await removeUnreferencedPhotos(
       [event.coverPhoto, ...event.photos.map((p) => p.url)],
       null,
-      req.userId
+      req.userId,
+      new Map(event.photos.map((p) => [p.url, p.size]))
     );
     await CreateEventGuestRegistration.deleteMany({ event: event._id });
+    // Its Direct Camera login stops working; history/fingerprints go too.
+    await removeDirectCameraData(event._id);
     res.status(200).json({ success: true, message: "Event deleted successfully" });
   } catch (error) {
     serverError(res, error);
@@ -525,11 +541,14 @@ export const uploadCover = async (req, res) => {
       return res.status(400).json({ success: false, message: "Please select a cover photo" });
     }
     const filter = ownEvent(req);
-    const previous = filter && (await CreateEvent.findOneAndUpdate(filter, { coverPhoto: url }, { returnDocument: "before" }));
+    const current = filter && (await CreateEvent.findOne(filter).select("coverPhoto"));
+    if (current?.coverPhoto) await recordPendingDeletions(req.userId, [current.coverPhoto]);
+    const previous = current && (await CreateEvent.findOneAndUpdate(filter, { coverPhoto: url }, { returnDocument: "before" }));
     if (!previous) {
-      await discardPhotos([url]);
+      await discardUploads(req);
       return notFound(res);
     }
+    await commitUploads(req);
 
     // The old cover file is deleted unless it is also one of the gallery photos.
     const event = await CreateEvent.findOne(filter);
@@ -540,7 +559,8 @@ export const uploadCover = async (req, res) => {
       event: serializeEvent(event, { withPhotos: true }),
     });
   } catch (error) {
-    await discardPhotos([url]);
+    // Once saved as the cover, the new file must not be deleted.
+    if (!(await CreateEvent.exists({ ...ownEvent(req), coverPhoto: url }).catch(() => true))) await discardUploads(req);
     serverError(res, error);
   }
 };
@@ -549,7 +569,10 @@ export const uploadCover = async (req, res) => {
 export const removeCover = async (req, res) => {
   try {
     const filter = ownEvent(req);
-    const previous = filter && (await CreateEvent.findOneAndUpdate(filter, { coverPhoto: "" }, { returnDocument: "before" }));
+    const current = filter && (await CreateEvent.findOne(filter).select("coverPhoto"));
+    if (!current) return notFound(res);
+    if (current.coverPhoto) await recordPendingDeletions(req.userId, [current.coverPhoto]);
+    const previous = await CreateEvent.findOneAndUpdate(filter, { coverPhoto: "" }, { returnDocument: "before" });
     if (!previous) return notFound(res);
 
     const event = await CreateEvent.findOne(filter);
@@ -582,6 +605,7 @@ export const setCoverFromPhoto = async (req, res) => {
     }
 
     const previous = event.coverPhoto;
+    if (previous && previous !== photo.url) await recordPendingDeletions(req.userId, [previous]);
     event.coverPhoto = photo.url;
     await event.save();
     await removeUnreferencedPhotos([previous], event, req.userId);
@@ -606,7 +630,7 @@ export const uploadPhotos = async (req, res) => {
     }
     const filter = ownEvent(req);
     if (!filter) {
-      await discardPhotos(urls);
+      await discardUploads(req);
       return notFound(res);
     }
 
@@ -617,7 +641,7 @@ export const uploadPhotos = async (req, res) => {
       { returnDocument: "after", runValidators: true }
     );
     if (!event) {
-      await discardPhotos(urls);
+      await discardUploads(req);
       // Distinguish "not yours / missing" from "event is full".
       if (await CreateEvent.exists(filter)) {
         return res.status(400).json({
@@ -627,6 +651,7 @@ export const uploadPhotos = async (req, res) => {
       }
       return notFound(res);
     }
+    await commitUploads(req);
 
     const added = new Set(urls);
     res.status(201).json({
@@ -636,7 +661,8 @@ export const uploadPhotos = async (req, res) => {
       event: serializeEvent(event, { withPhotos: true }),
     });
   } catch (error) {
-    await discardPhotos(urls);
+    // Photos already saved to the event must not be deleted.
+    if (!(await CreateEvent.exists({ ...ownEvent(req), "photos.url": { $in: urls } }).catch(() => true))) await discardUploads(req);
     serverError(res, error);
   }
 };
@@ -653,11 +679,12 @@ export const getPhotos = async (req, res) => {
   }
 };
 
-// Removes the given photo ids from one of the user's events, then deletes
-// their files (unless a file is still the cover).
+// Removes the given photo ids from one of the user's events and permanently
+// deletes their GridFS files (a deleted photo that was the cover is unset as
+// the cover too).
 const removePhotos = async (req, res, photoIds) => {
   const filter = ownEvent(req);
-  const event = filter && (await CreateEvent.findOne(filter).select("photos"));
+  const event = filter && (await CreateEvent.findOne(filter).select("photos coverPhoto"));
   if (!event) return notFound(res);
 
   const ids = new Set(photoIds.filter((id) => typeof id === "string"));
@@ -666,13 +693,16 @@ const removePhotos = async (req, res, photoIds) => {
     return res.status(404).json({ success: false, message: "Photo not found" });
   }
 
-  const updated = await CreateEvent.findOneAndUpdate(
-    filter,
-    { $pull: { photos: { _id: { $in: targets.map((p) => p._id) } } } },
-    { returnDocument: "after" }
-  );
+  // A deleted photo that is also the cover stops being the cover, so its
+  // file is removed too (not kept alive by the cover).
+  const urls = targets.map((p) => p.url);
+  const sizes = new Map(targets.map((p) => [p.url, p.size]));
+  await recordPendingDeletions(req.userId, urls, sizes);
+  const update = { $pull: { photos: { _id: { $in: targets.map((p) => p._id) } } } };
+  if (urls.includes(event.coverPhoto)) update.$set = { coverPhoto: "" };
+  const updated = await CreateEvent.findOneAndUpdate(filter, update, { returnDocument: "after" });
   if (!updated) return notFound(res);
-  await removeUnreferencedPhotos(targets.map((p) => p.url), updated, req.userId);
+  await removeUnreferencedPhotos(urls, updated, req.userId, sizes);
 
   res.status(200).json({
     success: true,

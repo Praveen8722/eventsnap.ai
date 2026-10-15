@@ -12,6 +12,10 @@ import invoiceRoutes from "./src/routes/invoiceRoutes.js";
 import inquiryRoutes from "./src/routes/inquiryRoutes.js";
 import portfolioRoutes from "./src/routes/portfolioRoutes.js";
 import createEventRoutes from "./src/routes/createEventRoutes.js";
+import directCameraRoutes from "./src/routes/directCameraRoutes.js";
+import faceGroupingRoutes from "./src/routes/faceGroupingRoutes.js";
+import { faceGroupingAvailable } from "./src/faceGrouping/config.js";
+import { startPendingDeletionSweeper } from "./src/services/createEventPhotoStorage.js";
 import { verifyEmailTransport } from "./src/services/emailservice.js";
 import { migrateLegacyPhotos } from "./src/services/accountPhotoStorage.js";
 import { migrateLegacyPortfolioPhotos } from "./src/services/portfolioPhotoStorage.js";
@@ -62,6 +66,12 @@ app.use("/api/invoices", invoiceRoutes);
 app.use("/api/inquiries", inquiryRoutes);
 app.use("/api/portfolio", portfolioRoutes);
 app.use("/api/create-events", createEventRoutes);
+// Create Event → Direct Camera Auto Upload settings (cameras upload to the
+// separate FTPS service in src/directCamera/, not to this HTTP API).
+app.use("/api/direct-camera", directCameraRoutes);
+// Create Event → People (photos grouped by person on this server with a free
+// local library; only when FACE_GROUPING_ENABLED=true).
+app.use("/api/face-groups", faceGroupingRoutes);
 
 // MongoDB connection
 mongoose
@@ -71,6 +81,16 @@ mongoose
     app.listen(process.env.PORT, () =>
       console.log(`Server running on ${process.env.PORT}`)
     );
+    // Retries photo deletions that failed (their storage quota is freed
+    // only once the file is really gone).
+    startPendingDeletionSweeper();
+    // Groups photos by person in the background — only when enabled; the
+    // face library (~45 MB RAM) isn't even loaded otherwise (Render Free).
+    if (faceGroupingAvailable()) {
+      import("./src/faceGrouping/worker.js")
+        .then(({ startFaceGroupingWorker }) => startFaceGroupingWorker())
+        .catch((error) => console.error("Face grouping worker failed to start:", error.message));
+    }
     // Logs whether Portfolio inquiry emails can actually be sent.
     verifyEmailTransport();
     // Moves profile/business and portfolio photos still on disk into MongoDB.

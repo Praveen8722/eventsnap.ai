@@ -15,3 +15,6 @@ Dockerfile
 Jenkinsfile
 README.md
 checkLiveUsers.js
+
+# Direct Camera FTPS certificate + private key (never committed or baked in)
+certs/

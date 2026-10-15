@@ -27,8 +27,11 @@ const toObjectId = (value) =>
 
 // randomIds: give stored files random, unguessable ids (default ObjectIds are
 // a timestamp + counter, so a photo's neighbours can be guessed from its URL).
-// Opt-in, so stores that don't set it behave exactly as before.
-export const createPhotoStore = ({ bucketName, urlPrefix, legacyPrefix, legacyDir, randomIds = false }) => {
+// revalidate: browsers must check with the server before reusing a cached
+// copy (answered with a cheap 304 while the file exists), so a deleted photo
+// stops showing at once instead of living on in caches for a year.
+// Both opt-in, so stores that don't set them behave exactly as before.
+export const createPhotoStore = ({ bucketName, urlPrefix, legacyPrefix, legacyDir, randomIds = false, revalidate = false }) => {
   const bucket = () =>
     new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName });
 
@@ -71,17 +74,21 @@ export const createPhotoStore = ({ bucketName, urlPrefix, legacyPrefix, legacyDi
   // Deletes the photo behind url (GridFS file, or legacy disk file). Only
   // ever touches a photo this store created — never an arbitrary path — and,
   // when userId is given, only that user's own GridFS photo. Never throws.
+  // Resolves to true when the file is gone (or was already), false when it
+  // couldn't be deleted (e.g. database unreachable) or isn't the user's.
   const remove = async (url, { userId } = {}) => {
     try {
       const fileId = fileIdFromUrl(url);
       if (fileId) {
-        if (userId !== undefined && !(await isOwnedBy(url, userId))) return;
+        if (userId !== undefined && !(await isOwnedBy(url, userId))) return !(await findFile(fileId));
         await bucket().delete(fileId);
       } else if (isLegacyUrl(url)) {
         await fs.promises.unlink(path.join(legacyDir, path.basename(url)));
       }
-    } catch {
+      return true;
+    } catch (error) {
       // Already gone.
+      return error?.code === "ENOENT" || /not found/i.test(String(error?.message));
     }
   };
 
@@ -94,10 +101,16 @@ export const createPhotoStore = ({ bucketName, urlPrefix, legacyPrefix, legacyDi
       const file = await findFile(fileId);
       if (!file) return res.status(404).json({ message: "Photo not found" });
 
+      if (revalidate) {
+        // The file id never changes content, so it is the ETag.
+        const etag = `"${fileId}"`;
+        res.set({ ETag: etag, "Cache-Control": "no-cache", "Cross-Origin-Resource-Policy": "cross-origin" });
+        if (req.get("If-None-Match") === etag) return res.status(304).end();
+      }
       res.set({
         "Content-Type": file.metadata?.contentType || "application/octet-stream",
         "Content-Length": file.length,
-        "Cache-Control": "public, max-age=31536000, immutable",
+        "Cache-Control": revalidate ? "no-cache" : "public, max-age=31536000, immutable",
         "X-Content-Type-Options": "nosniff",
         // Uploaded images (e.g. SVG) must never run script if opened directly.
         "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox",
