@@ -7,7 +7,7 @@ import { sendPasswordResetEmail } from "../services/emailservice.js";
 // ================= SIGNUP =================
 export const signup = async (req, res) => { 
   try {
-    const { name, businessName, email, phone, password, confirmPassword } =
+    const { name, businessName, email, phone, password, confirmPassword } = 
       req.body;
 
     // Plain strings only — an object like {"$ne": null} would otherwise be

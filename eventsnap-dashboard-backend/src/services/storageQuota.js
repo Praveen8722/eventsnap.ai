@@ -85,16 +85,26 @@ export const calculateUsage = async (userId) => {
   return total;
 };
 
+// Ledgers are created once and never deleted, so once a photographer's is
+// known to exist this process stops asking MongoDB (saves a round trip per
+// uploaded photo). If one is removed anyway (by hand, or a test database is
+// dropped), reserve() notices the missing ledger, forgets it here and
+// recreates it.
+const knownLedgers = new Set();
 const ensureLedger = async (userId) => {
-  if (await StorageUsage.exists({ user: userId })) return;
-  const used = await calculateUsage(userId);
-  await StorageUsage.updateOne(
-    { user: userId },
-    { $setOnInsert: { used, holds: [], version: 0, reconciledAt: new Date() } },
-    { upsert: true }
-  ).catch((err) => {
-    if (err?.code !== 11000) throw err; // created by a parallel request
-  });
+  const key = String(userId);
+  if (knownLedgers.has(key)) return;
+  if (!(await StorageUsage.exists({ user: userId }))) {
+    const used = await calculateUsage(userId);
+    await StorageUsage.updateOne(
+      { user: userId },
+      { $setOnInsert: { used, holds: [], version: 0, reconciledAt: new Date() } },
+      { upsert: true }
+    ).catch((err) => {
+      if (err?.code !== 11000) throw err; // created by a parallel request
+    });
+  }
+  knownLedgers.add(key);
 };
 
 const cutoff = () => new Date(Date.now() - HOLD_TTL_MS);
@@ -107,14 +117,22 @@ const pullHolds = (ids) => ({ holds: { $or: [{ _id: { $in: ids } }, { at: { $lt:
 // Holds `bytes` for an upload → hold id. Throws StorageQuotaError if it
 // doesn't fit in the remaining space.
 export const reserve = async (userId, bytes) => {
-  await ensureLedger(userId);
   const limit = quotaBytesFor(userId);
   const id = crypto.randomUUID();
   const size = Math.max(0, Number(bytes) || 0);
-  const result = await StorageUsage.updateOne(
-    { user: userId, $expr: { $lte: [{ $add: ["$used", heldBytes(cutoff()), size] }, limit] } },
-    { $push: { holds: { _id: id, bytes: size, at: new Date() } }, $inc: { version: 1 } }
-  );
+  const tryHold = () =>
+    StorageUsage.updateOne(
+      { user: userId, $expr: { $lte: [{ $add: ["$used", heldBytes(cutoff()), size] }, limit] } },
+      { $push: { holds: { _id: id, bytes: size, at: new Date() } }, $inc: { version: 1 } }
+    );
+  await ensureLedger(userId);
+  let result = await tryHold();
+  if (!result.modifiedCount && !(await StorageUsage.exists({ user: userId }))) {
+    // The ledger was removed after this process saw it: recreate, try again.
+    knownLedgers.delete(String(userId));
+    await ensureLedger(userId);
+    result = await tryHold();
+  }
   if (!result.modifiedCount) throw new StorageQuotaError(limit);
   return id;
 };
@@ -151,7 +169,13 @@ export const touch = async (userId) => {
 // { usedBytes, reservedBytes, limitBytes, availableBytes }
 export const getStorageUsage = async (userId) => {
   await ensureLedger(userId);
-  const doc = await StorageUsage.findOne({ user: userId }).lean();
+  let doc = await StorageUsage.findOne({ user: userId }).lean();
+  if (!doc) {
+    // Removed after this process cached it: recreate from what's stored.
+    knownLedgers.delete(String(userId));
+    await ensureLedger(userId);
+    doc = await StorageUsage.findOne({ user: userId }).lean();
+  }
   const since = cutoff();
   const reservedBytes = (doc?.holds || []).filter((h) => h.at > since).reduce((s, h) => s + h.bytes, 0);
   const usedBytes = doc?.used || 0;
@@ -173,6 +197,7 @@ export const getStorageUsage = async (userId) => {
 export const reconcileStorageUsage = async (userId, hooks = {}) => {
   const doc = await StorageUsage.findOne({ user: userId }).lean();
   if (!doc) {
+    knownLedgers.delete(String(userId)); // may be cached from before it was removed
     await ensureLedger(userId);
     return { status: "created" };
   }

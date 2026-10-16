@@ -102,6 +102,25 @@ describe("storage quota", { skip: false }, () => {
     assert.ok(u.reservedBytes <= u.limitBytes);
   });
 
+  test("ledger removed after it was cached → recreated from stored photos, quota still enforced", async (t) => {
+    if (!connected) return t.skip("no MongoDB");
+    const user = newUser();
+    const g = gridUrl();
+    await addGridFile(g, 2 * GB, user);
+    await mkEvent(user, [{ url: g, originalName: "a", size: 2 * GB }]);
+    await quota.commit(user, [{ id: await quota.reserve(user, 1), bytes: 1 }]); // ledger now cached
+    await StorageUsage.deleteOne({ user });
+    assert.ok(await quota.reserve(user, 512 * MB)); // recreated (2 GB counted), still fits
+    assert.equal((await StorageUsage.findOne({ user }).lean()).used, 2 * GB);
+    await assert.rejects(quota.reserve(user, 600 * MB), quota.StorageQuotaError);
+    // The usage read and the recount recover the same way.
+    await StorageUsage.deleteOne({ user });
+    assert.equal((await quota.getStorageUsage(user)).usedBytes, 2 * GB);
+    await StorageUsage.deleteOne({ user });
+    assert.equal((await quota.reconcileStorageUsage(user)).status, "created");
+    assert.equal((await StorageUsage.findOne({ user }).lean()).used, 2 * GB);
+  });
+
   test("free never goes below zero", async (t) => {
     if (!connected) return t.skip("no MongoDB");
     const user = newUser();

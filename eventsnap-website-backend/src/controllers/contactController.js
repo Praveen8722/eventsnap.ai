@@ -14,7 +14,7 @@ export const submitContactMessage = async (req, res) => {
     if (missingFields.length) {
       return res.status(400).json({
         success: false,
-        message: `Missing required field(s): ${missingFields.join(", ")}`,
+        message: `Missing required field(s): ${missingFields.join(", ")}`,      
       });
     }
 
@@ -40,7 +40,7 @@ export const submitContactMessage = async (req, res) => {
   }
 };
 
-// ================= VIEW CONTACT MESSAGES =================
+// ================= VIEW CONTACT MESSAGES ================= 
 export const viewContactMessages = async (req, res) => {
   try {
     const contactMessages = await ContactMessage.find().sort({ createdAt: -1 });

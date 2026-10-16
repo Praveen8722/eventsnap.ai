@@ -18,10 +18,13 @@ import { apiError } from "./mockData";
 const MAX_SIZE_MB = 25;
 const MAX_SIZE = MAX_SIZE_MB * 1024 * 1024;
 // Each request carries at most this many photos / bytes (the backend accepts
-// up to 50 photos per request), and batches are sent one after another, so a
-// large selection never floods the server.
+// up to 50 photos per request). Two requests are kept in flight, so the next
+// batch uploads while the server is still storing the previous one (instead
+// of the connection sitting idle); more than two gains nothing and only adds
+// server memory (each in-flight batch is held in memory while it's stored).
 const BATCH_MAX_FILES = 10;
 const BATCH_MAX_BYTES = 40 * 1024 * 1024;
+const PARALLEL_BATCHES = 2;
 
 const formatSize = (bytes) =>
   bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -171,6 +174,16 @@ export function UploadPhotosModal({ event, onClose, onSaved, onDone }) {
   const patch = (ids, changes) =>
     setItems((prev) => prev.map((i) => (ids.has(i.id) ? { ...i, ...changes } : i)));
 
+  // Two requests can finish out of order: only pass on an event at least as
+  // new as the last one, so an older copy never replaces a newer one.
+  const lastSaved = useRef(0);
+  const saved = (serverEvent) => {
+    const at = Date.parse(serverEvent?.updatedAt) || 0;
+    if (at < lastSaved.current) return;
+    lastSaved.current = at;
+    onSaved(serverEvent);
+  };
+
   // Sends one request; returns null on success or the axios error.
   const send = async (batch) => {
     const ids = new Set(batch.map((i) => i.id));
@@ -183,7 +196,7 @@ export function UploadPhotosModal({ event, onClose, onSaved, onDone }) {
         (percent) => patch(ids, { progress: Math.min(percent, 99) })
       );
       patch(ids, { status: "done", progress: 100 });
-      onSaved(res.data.event);
+      saved(res.data.event);
       return null;
     } catch (err) {
       return err;
@@ -200,25 +213,27 @@ export function UploadPhotosModal({ event, onClose, onSaved, onDone }) {
     let failed = 0;
     let stopped = false;
 
-    for (const batch of toBatches(queue)) {
+    // Uploads one batch (with the per-photo retry below) — run by up to
+    // PARALLEL_BATCHES workers sharing the batch queue.
+    const runBatch = async (batch) => {
       if (stopped) {
         patch(new Set(batch.map((i) => i.id)), { status: "failed", progress: 0, error: "Not uploaded" });
         failed += batch.length;
-        continue;
+        return;
       }
       let err = await send(batch);
       if (!err) {
         uploaded += batch.length;
-        continue;
+        return;
       }
       const status = err.response?.status;
       // Event gone / session ended: nothing else can succeed.
       if (status === 401 || status === 404) {
-        setFatalError(apiError(err, "This event is no longer available."));
+        if (!stopped) setFatalError(apiError(err, "This event is no longer available."));
         patch(new Set(batch.map((i) => i.id)), { status: "failed", progress: 0, error: apiError(err, "Upload failed") });
         failed += batch.length;
         stopped = true;
-        continue;
+        return;
       }
       // Retry a multi-photo batch one photo at a time, so a single bad file
       // (or a momentary network error) only fails that photo.
@@ -227,15 +242,31 @@ export function UploadPhotosModal({ event, onClose, onSaved, onDone }) {
         patch(new Set([batch[0].id]), { status: "failed", progress: 0, error: apiError(err, "Upload failed") });
         failed++;
       }
-      for (const item of retry) {
+      for (const [n, item] of retry.entries()) {
+        if (stopped) {
+          patch(new Set(retry.slice(n).map((i) => i.id)), { status: "failed", progress: 0, error: "Not uploaded" });
+          failed += retry.length - n;
+          return;
+        }
         err = await send([item]);
         if (!err) uploaded++;
         else {
           patch(new Set([item.id]), { status: "failed", progress: 0, error: apiError(err, "Upload failed") });
           failed++;
+          if ([401, 404].includes(err.response?.status)) {
+            if (!stopped) setFatalError(apiError(err, "This event is no longer available."));
+            stopped = true;
+          }
         }
       }
-    }
+    };
+
+    const batches = toBatches(queue);
+    await Promise.all(
+      Array.from({ length: Math.min(PARALLEL_BATCHES, batches.length) }, async () => {
+        while (batches.length) await runBatch(batches.shift());
+      })
+    );
 
     setUploading(false);
     if (!failed && uploaded) {
