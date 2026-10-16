@@ -141,7 +141,7 @@ export function CreateEventModal({ onClose, onCreate }) {
           {cover ? (
             <div className="group relative aspect-[16/7] rounded-xl overflow-hidden border border-gray-200 bg-gray-100">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={cover.url} alt="Cover preview" className="w-full h-full object-cover" />
+              <img src={cover.url} alt="Cover preview" className="w-full h-full object-contain" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
               <div className="absolute bottom-3 right-3 flex gap-2">
                 <button

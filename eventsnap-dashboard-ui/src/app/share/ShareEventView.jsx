@@ -329,10 +329,12 @@ export default function ShareEventView({ shareId }) {
       )}
       <div className={protect ? "print:hidden" : undefined}>
         {/* Hero */}
-        <header className="relative h-64 sm:h-80 lg:h-96 overflow-hidden bg-gradient-to-br from-[#6C63FF] to-[#A23EFF]">
+        {/* The cover fills the whole banner (object-cover keeps its aspect
+            ratio — no stretching), centred. */}
+        <header className="relative h-56 sm:h-64 lg:h-72 overflow-hidden bg-gradient-to-br from-[#6C63FF] to-[#A23EFF]">
           {cover && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={cover} alt="" className="absolute inset-0 w-full h-full object-cover" />
+            <img src={cover} alt="" className="absolute inset-0 w-full h-full object-cover object-center" />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
           <div className="absolute top-4 left-4 sm:top-6 sm:left-6 text-sm font-bold">

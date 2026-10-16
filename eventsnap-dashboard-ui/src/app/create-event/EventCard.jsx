@@ -95,7 +95,7 @@ export function EventCard({ event, onOpen, onUpload, onShare, onCopyLink, onDele
               src={cover}
               alt=""
               loading="lazy"
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+              className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-[1.04]"
             />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#6C63FF]/15 via-white to-[#FF5555]/10 text-[#6C63FF]">

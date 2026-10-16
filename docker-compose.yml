@@ -50,3 +50,27 @@ services:
     depends_on:
       - website-backend
     restart: unless-stopped
+
+  # Direct Camera Auto Upload — FTPS ingestion service (cameras upload here;
+  # photos go to the same MongoDB/GridFS). Optional and off by default:
+  #   docker compose --profile direct-camera up -d --build
+  # Needs certs/<cert>.pem + key in eventsnap-dashboard-backend/certs and the
+  # DIRECT_CAMERA_* settings in its .env (see .env.example).
+  direct-camera:
+    profiles: ["direct-camera"]
+    build: ./eventsnap-dashboard-backend
+    image: eventsnap-dashboard-backend
+    command: ["node", "src/directCamera/index.js"]
+    ports:
+      - "${DIRECT_CAMERA_FTP_PORT:-2121}:2121"
+      - "30000-30009:30000-30009"
+    volumes:
+      - ./eventsnap-dashboard-backend/.env:/app/.env:ro
+      - ./eventsnap-dashboard-backend/certs:/app/certs:ro
+    environment:
+      MONGO_URL: mongodb://host.docker.internal:27017/eventSnapDB
+      DIRECT_CAMERA_FTP_PORT: "2121"
+      DIRECT_CAMERA_PASV_PORTS: "30000-30009"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
