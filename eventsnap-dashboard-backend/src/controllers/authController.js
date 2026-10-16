@@ -11,7 +11,7 @@ export const signup = async (req, res) => {
       req.body;
 
     // Plain strings only — an object like {"$ne": null} would otherwise be
-    // run as a MongoDB query operator.
+    // run as a MongoDB query operator.   
     if (typeof email !== "string" || typeof password !== "string") {
       return res.status(400).json({ message: "Email and password are required" });
     }
