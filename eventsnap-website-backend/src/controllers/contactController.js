@@ -21,7 +21,7 @@ export const submitContactMessage = async (req, res) => {
     const contactMessage = new ContactMessage({ name, email, subject, message });
     await contactMessage.save();
 
-    // A notification failure must not block the submission from succeeding.
+    // A notification failure must not block the submission from succeeding.  
     try {
       await notifyNewContactMessage({ name, email, subject, message });
     } catch (notifyError) {
