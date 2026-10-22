@@ -26,7 +26,7 @@ import {
   setEventCoverFromPhoto,
   uploadEventCover,
 } from "@/api/createEventApi";
-import { apiError, fromApi, photoCount, publicGalleryUrl, settingsToApi } from "./mockData";
+import { apiError, fromApi, fromApiPhoto, photoCount, publicGalleryUrl, settingsToApi } from "./mockData";
 import { primaryBtn } from "./ModalShell";
 import { EventCard } from "./EventCard";
 import { EventGallery } from "./EventGallery";
@@ -149,6 +149,23 @@ export function Photoshare() {
     const next = fromApi(serverEvent);
     setEvents((prev) =>
       prev.map((e) => (e.id === next.id ? { ...next, photos: next.photos ?? e.photos } : e))
+    );
+  }, []);
+
+  // Photos just uploaded (Upload Photos, one call per batch): appended to the
+  // photos already shown — not a replacement of the whole list — with the
+  // event's other fields from the server. Batches can finish in any order, so
+  // the count only ever goes up and a photo already shown isn't added twice.
+  const addPhotos = useCallback((photos, serverEvent) => {
+    const next = fromApi(serverEvent);
+    setEvents((prev) =>
+      prev.map((e) => {
+        if (e.id !== next.id) return e;
+        const shown = new Set((e.photos || []).map((p) => p.id));
+        const added = photos.map(fromApiPhoto).filter((p) => !shown.has(p.id));
+        const merged = e.photos ? [...e.photos, ...added] : null;
+        return { ...next, photoCount: Math.max(e.photoCount, next.photoCount, merged?.length ?? 0), photos: merged };
+      })
     );
   }, []);
 
@@ -487,7 +504,7 @@ export function Photoshare() {
 
       {modal?.type === "create" && <CreateEventModal onClose={closeModal} onCreate={createEvent} />}
       {modal?.type === "upload" && modalEvent && (
-        <UploadPhotosModal event={modalEvent} onClose={closeModal} onSaved={mergeEvent} onDone={handleUploadDone} />
+        <UploadPhotosModal event={modalEvent} onClose={closeModal} onSaved={mergeEvent} onPhotosAdded={addPhotos} onDone={handleUploadDone} />
       )}
       {modal?.type === "share" && modalEvent && <ShareQrModal event={modalEvent} onClose={closeModal} />}
 

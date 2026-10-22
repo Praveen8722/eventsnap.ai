@@ -47,11 +47,19 @@ const newSlug = (name) => `${slugify(name)}-${crypto.randomBytes(4).toString("he
 
 const toBool = (value) => value === true || value === "true";
 
+// A thumbnail is a ~640 px JPEG (tens of KB); anything bigger isn't one.
+const MAX_THUMB_BYTES = 1024 * 1024;
+
+// url → bytes of the stored files of these photos (originals + thumbnails).
+const fileSizes = (photos) =>
+  new Map(photos.flatMap((p) => [[p.url, p.size], ...(p.thumbUrl ? [[p.thumbUrl, p.thumbSize]] : [])]));
+
 const serializePhoto = (photo) => ({
   id: String(photo._id),
   url: photo.url,
   originalName: photo.originalName,
   size: photo.size,
+  thumbUrl: photo.thumbUrl || "",
   faceIndexed: !!photo.faceIndexed,
   createdAt: photo.createdAt,
 });
@@ -281,7 +289,7 @@ export const getPublicEvent = async (req, res) => {
         photoCount: e.photoCount,
         // With Face Search on, guests only see photos matched to their
         // selfie (POST /public/:shareId/face-search) — never the full list.
-        photos: e.guestAccess.faceSearch ? [] : e.photos.map(({ id, url }) => ({ id, url })),
+        photos: e.guestAccess.faceSearch ? [] : e.photos.map(({ id, url, thumbUrl }) => ({ id, url, thumbUrl })),
         faceIndexedCount: e.faceIndexedCount,
         photoDownload: e.photoDownload,
         pricePerPhoto: e.pricePerPhoto,
@@ -345,13 +353,13 @@ export const faceSearch = async (req, res) => {
         if (signature.length !== DESCRIPTOR_LENGTH) continue;
         best = Math.min(best, distanceTo(descriptor, signature));
       }
-      if (best <= MATCH_DISTANCE) matches.push({ id: String(photo._id), url: photo.url, distance: best });
+      if (best <= MATCH_DISTANCE) matches.push({ id: String(photo._id), url: photo.url, thumbUrl: photo.thumbUrl || "", distance: best });
     }
     matches.sort((a, b) => a.distance - b.distance);
 
     res.status(200).json({
       success: true,
-      matches: matches.map(({ id, url }) => ({ id, url })),
+      matches: matches.map(({ id, url, thumbUrl }) => ({ id, url, thumbUrl })),
       indexed,
       total: (event.photos || []).length,
     });
@@ -506,23 +514,23 @@ export const updateEvent = async (req, res) => {
 export const deleteEvent = async (req, res) => {
   try {
     const filter = ownEvent(req);
-    const existing = filter && (await CreateEvent.findOne(filter).select("coverPhoto photos.url photos.size"));
+    const existing = filter && (await CreateEvent.findOne(filter).select("coverPhoto photos.url photos.size photos.thumbUrl photos.thumbSize"));
     if (!existing) return notFound(res);
     // Storage quota: files are recorded as pending deletion first (see
     // recordPendingDeletions), so a crash can't lose track of them.
     await recordPendingDeletions(
       req.userId,
-      [existing.coverPhoto, ...existing.photos.map((p) => p.url)],
-      new Map(existing.photos.map((p) => [p.url, p.size]))
+      [existing.coverPhoto, ...existing.photos.flatMap((p) => [p.url, p.thumbUrl])],
+      fileSizes(existing.photos)
     );
     const event = await CreateEvent.findOneAndDelete(filter);
     if (!event) return notFound(res);
 
     await removeUnreferencedPhotos(
-      [event.coverPhoto, ...event.photos.map((p) => p.url)],
+      [event.coverPhoto, ...event.photos.flatMap((p) => [p.url, p.thumbUrl])],
       null,
       req.userId,
-      new Map(event.photos.map((p) => [p.url, p.size]))
+      fileSizes(event.photos)
     );
     await CreateEventGuestRegistration.deleteMany({ event: event._id });
     // Its Direct Camera login stops working; history/fingerprints go too.
@@ -622,10 +630,11 @@ export const setCoverFromPhoto = async (req, res) => {
 //================== UPLOAD EVENT PHOTOS =================
 // The first upload publishes a Draft event (status → "Live").
 export const uploadPhotos = async (req, res) => {
-  const files = req.files || [];
+  const files = req.files?.photos || [];
   const urls = files.map((f) => f.url);
   try {
     if (!files.length) {
+      await discardUploads(req);
       return res.status(400).json({ success: false, message: "Please select at least one photo" });
     }
     const filter = ownEvent(req);
@@ -634,14 +643,32 @@ export const uploadPhotos = async (req, res) => {
       return notFound(res);
     }
 
-    const items = files.map((f) => ({ url: f.url, originalName: f.originalname || "", size: f.size || 0 }));
+    // Optional thumbnails: "thumb-<i>.jpg" belongs to the i-th photo. Anything
+    // that doesn't pair up (or is too big to be a thumbnail) isn't kept.
+    const thumbOf = new Map();
+    const stray = [];
+    for (const t of req.files?.thumbs || []) {
+      const i = Number(/^thumb-(\d{1,3})\.(jpe?g|webp)$/i.exec(t.originalname || "")?.[1] ?? -1);
+      if (i >= 0 && i < files.length && !thumbOf.has(i) && t.size > 0 && t.size <= MAX_THUMB_BYTES) thumbOf.set(i, t);
+      else stray.push(t);
+    }
+    if (stray.length) await discardUploads(req, stray);
+    const kept = [...files, ...thumbOf.values()];
+
+    const items = files.map((f, i) => ({
+      url: f.url,
+      originalName: f.originalname || "",
+      size: f.size || 0,
+      thumbUrl: thumbOf.get(i)?.url || "",
+      thumbSize: thumbOf.get(i)?.size || 0,
+    }));
     const event = await CreateEvent.findOneAndUpdate(
       { ...filter, [`photos.${MAX_PHOTOS_PER_EVENT - files.length}`]: { $exists: false } },
       { $push: { photos: { $each: items } }, $set: { status: "Live" } },
       { returnDocument: "after", runValidators: true }
     );
     if (!event) {
-      await discardUploads(req);
+      await discardUploads(req, kept);
       // Distinguish "not yours / missing" from "event is full".
       if (await CreateEvent.exists(filter)) {
         return res.status(400).json({
@@ -651,14 +678,16 @@ export const uploadPhotos = async (req, res) => {
       }
       return notFound(res);
     }
-    await commitUploads(req);
+    await commitUploads(req, kept);
 
     const added = new Set(urls);
     res.status(201).json({
       success: true,
       message: `${files.length} photo${files.length === 1 ? "" : "s"} uploaded`,
       photos: event.photos.filter((p) => added.has(p.url)).map(serializePhoto),
-      event: serializeEvent(event, { withPhotos: true }),
+      // ?compact=1: the event without its full photo list (the new photos
+      // are in `photos` above) — much smaller for large events.
+      event: serializeEvent(event, { withPhotos: req.query.compact !== "1" }),
     });
   } catch (error) {
     // Photos already saved to the event must not be deleted.
@@ -695,11 +724,11 @@ const removePhotos = async (req, res, photoIds) => {
 
   // A deleted photo that is also the cover stops being the cover, so its
   // file is removed too (not kept alive by the cover).
-  const urls = targets.map((p) => p.url);
-  const sizes = new Map(targets.map((p) => [p.url, p.size]));
+  const urls = targets.flatMap((p) => [p.url, p.thumbUrl]).filter(Boolean);
+  const sizes = fileSizes(targets);
   await recordPendingDeletions(req.userId, urls, sizes);
   const update = { $pull: { photos: { _id: { $in: targets.map((p) => p._id) } } } };
-  if (urls.includes(event.coverPhoto)) update.$set = { coverPhoto: "" };
+  if (targets.some((p) => p.url === event.coverPhoto)) update.$set = { coverPhoto: "" };
   const updated = await CreateEvent.findOneAndUpdate(filter, update, { returnDocument: "after" });
   if (!updated) return notFound(res);
   await removeUnreferencedPhotos(urls, updated, req.userId, sizes);

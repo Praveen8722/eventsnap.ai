@@ -85,10 +85,13 @@ export const STATUS_STYLES = {
   Processing: "bg-amber-100 text-amber-700",
 };
 
-const fromApiPhoto = (photo) => {
+export const fromApiPhoto = (photo) => {
   const src = createEventAssetUrl(photo.url);
-  // originalName + size let Camera Auto Upload skip photos already uploaded.
-  return { id: photo.id, src, thumb: src, originalName: photo.originalName || "", size: photo.size || 0 };
+  // thumb: the small preview when the photo has one (gallery tiles), else the
+  // original. originalName + size let Camera Auto Upload skip photos already
+  // uploaded.
+  const thumb = photo.thumbUrl ? createEventAssetUrl(photo.thumbUrl) : src;
+  return { id: photo.id, src, thumb, originalName: photo.originalName || "", size: photo.size || 0 };
 };
 
 // Backend event → UI event. `photos` is null until the event's photos have

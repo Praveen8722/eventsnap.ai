@@ -10,8 +10,12 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
-  const { logout, user } = useAuth();
+  const { logout, user, can } = useAuth();
   const name = user?.name ?? '';
+  // Only the pages this admin's role can open.
+  const groups = NAV_GROUPS.map(group => ({ ...group, items: group.items.filter(item => can(item.area)) })).filter(
+    group => group.items.length > 0,
+  );
   const userInitials = initials(name);
 
   return (
@@ -59,7 +63,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 scrollbar-hide">
-        {NAV_GROUPS.map(group => (
+        {groups.map(group => (
           <div key={group.label} className="mb-6">
             {!collapsed && (
               <div className="px-3 mb-2">

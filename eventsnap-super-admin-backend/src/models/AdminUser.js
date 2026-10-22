@@ -13,10 +13,17 @@ const adminUserSchema = new mongoose.Schema(
     passwordHash: { type: String, default: null, select: false },
     lastLogin: { type: Date, default: null },
     joined: { type: String, required: true },
-    twoFA: { type: Boolean, default: false },
+    // Bumped on sign-out, deactivation and role change; access tokens carry the version
+    // they were issued with and stop working once it changes.
+    tokenVersion: { type: Number, default: 0 },
+    // Pending invite: SHA-256 of the one-time token sent in the invite link, and its expiry.
+    inviteTokenHash: { type: String, default: null, select: false },
+    inviteExpiresAt: { type: Date, default: null },
   },
   { versionKey: false },
 );
+
+adminUserSchema.index({ inviteTokenHash: 1 }, { sparse: true });
 
 export const AdminUser = mongoose.model('AdminUser', adminUserSchema);
 

@@ -378,6 +378,7 @@ export function EventGallery({ event, onBack, onUpload, onShare, onRemovePhoto, 
                       src={photo.thumb}
                       alt=""
                       loading="lazy"
+                      decoding="async"
                       className="w-full h-auto block transition-transform duration-500 group-hover:scale-[1.03]"
                     />
                   </button>

@@ -1,5 +1,6 @@
 export const ROUTES = {
   login: '/login',
+  acceptInvite: '/accept-invite',
   dashboard: '/dashboard',
   photographers: '/photographers',
   clients: '/clients',
@@ -16,4 +17,4 @@ export const ROUTES = {
 } as const;
 
 export type AppRoute = (typeof ROUTES)[keyof typeof ROUTES];
-export type AdminRoute = Exclude<AppRoute, typeof ROUTES.login>;
+export type AdminRoute = Exclude<AppRoute, typeof ROUTES.login | typeof ROUTES.acceptInvite>;

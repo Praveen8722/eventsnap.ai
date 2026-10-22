@@ -1,31 +1,38 @@
-import { lazy } from 'react';
+import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router';
-import { ROUTES } from '@/config/routes';
+import { ROUTE_AREAS } from '@/config/navigation';
+import { ROUTES, type AdminRoute } from '@/config/routes';
 import { AdminLayout } from '@/layouts/AdminLayout';
+import AcceptInvitePage from '@/pages/AcceptInvitePage';
 import LoginPage from '@/pages/LoginPage';
 import { ProtectedRoute } from './ProtectedRoute';
 import { PublicOnlyRoute } from './PublicOnlyRoute';
+import { RequireAccess } from './RequireAccess';
 
-const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
-const PhotographersPage = lazy(() => import('@/pages/PhotographersPage'));
-const ClientsPage = lazy(() => import('@/pages/ClientsPage'));
-const BookingsPage = lazy(() => import('@/pages/BookingsPage'));
-const PaymentsPage = lazy(() => import('@/pages/PaymentsPage'));
-const SubscriptionsPage = lazy(() => import('@/pages/SubscriptionsPage'));
-const AnalyticsPage = lazy(() => import('@/pages/AnalyticsPage'));
-const GalleryStoragePage = lazy(() => import('@/pages/GalleryStoragePage'));
-const ActivityLogsPage = lazy(() => import('@/pages/ActivityLogsPage'));
-const SupportTicketsPage = lazy(() => import('@/pages/SupportTicketsPage'));
-const NotificationsPage = lazy(() => import('@/pages/NotificationsPage'));
-const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
-const AdminUsersPage = lazy(() => import('@/pages/AdminUsersPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
+
+const PAGES: Record<AdminRoute, LazyExoticComponent<ComponentType>> = {
+  [ROUTES.dashboard]: lazy(() => import('@/pages/DashboardPage')),
+  [ROUTES.photographers]: lazy(() => import('@/pages/PhotographersPage')),
+  [ROUTES.clients]: lazy(() => import('@/pages/ClientsPage')),
+  [ROUTES.bookings]: lazy(() => import('@/pages/BookingsPage')),
+  [ROUTES.payments]: lazy(() => import('@/pages/PaymentsPage')),
+  [ROUTES.subscriptions]: lazy(() => import('@/pages/SubscriptionsPage')),
+  [ROUTES.analytics]: lazy(() => import('@/pages/AnalyticsPage')),
+  [ROUTES.gallery]: lazy(() => import('@/pages/GalleryStoragePage')),
+  [ROUTES.activityLogs]: lazy(() => import('@/pages/ActivityLogsPage')),
+  [ROUTES.support]: lazy(() => import('@/pages/SupportTicketsPage')),
+  [ROUTES.notifications]: lazy(() => import('@/pages/NotificationsPage')),
+  [ROUTES.settings]: lazy(() => import('@/pages/SettingsPage')),
+  [ROUTES.adminUsers]: lazy(() => import('@/pages/AdminUsersPage')),
+};
 
 export const router = createBrowserRouter([
   {
     element: <PublicOnlyRoute />,
     children: [{ path: ROUTES.login, element: <LoginPage /> }],
   },
+  { path: ROUTES.acceptInvite, element: <AcceptInvitePage /> },
   {
     element: <ProtectedRoute />,
     children: [
@@ -33,19 +40,14 @@ export const router = createBrowserRouter([
         element: <AdminLayout />,
         children: [
           { index: true, element: <Navigate to={ROUTES.dashboard} replace /> },
-          { path: ROUTES.dashboard, element: <DashboardPage /> },
-          { path: ROUTES.photographers, element: <PhotographersPage /> },
-          { path: ROUTES.clients, element: <ClientsPage /> },
-          { path: ROUTES.bookings, element: <BookingsPage /> },
-          { path: ROUTES.payments, element: <PaymentsPage /> },
-          { path: ROUTES.subscriptions, element: <SubscriptionsPage /> },
-          { path: ROUTES.analytics, element: <AnalyticsPage /> },
-          { path: ROUTES.gallery, element: <GalleryStoragePage /> },
-          { path: ROUTES.activityLogs, element: <ActivityLogsPage /> },
-          { path: ROUTES.support, element: <SupportTicketsPage /> },
-          { path: ROUTES.notifications, element: <NotificationsPage /> },
-          { path: ROUTES.settings, element: <SettingsPage /> },
-          { path: ROUTES.adminUsers, element: <AdminUsersPage /> },
+          ...(Object.entries(PAGES) as [AdminRoute, LazyExoticComponent<ComponentType>][]).map(([path, Page]) => ({
+            path,
+            element: (
+              <RequireAccess area={ROUTE_AREAS[path]}>
+                <Page />
+              </RequireAccess>
+            ),
+          })),
           { path: '*', element: <NotFoundPage /> },
         ],
       },

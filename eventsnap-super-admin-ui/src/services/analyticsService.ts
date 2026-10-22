@@ -1,6 +1,6 @@
-import type { AnalyticsData } from '@/types';
+import type { AnalyticsData, AnalyticsPeriod } from '@/types';
 import { apiRequest } from './apiClient';
 
-export function getAnalyticsData(): Promise<AnalyticsData> {
-  return apiRequest('/analytics');
+export function getAnalyticsData(period: AnalyticsPeriod = '30d'): Promise<AnalyticsData> {
+  return apiRequest(`/analytics?period=${encodeURIComponent(period)}`);
 }

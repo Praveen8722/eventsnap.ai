@@ -5,20 +5,23 @@ const ALGORITHM = 'HS256';
 
 export const TOKEN_PURPOSE = Object.freeze({
   access: 'access',
-  twoFactor: '2fa',
 });
 
-export function signToken(adminId, purpose) {
-  const expiresIn = purpose === TOKEN_PURPOSE.access ? env.jwtExpiresIn : env.twoFactorChallengeExpiresIn;
-  return jwt.sign({ purpose }, env.jwtSecret, { subject: adminId, expiresIn, algorithm: ALGORITHM });
+/** `version` is the admin's tokenVersion; bumping it invalidates every token issued before. */
+export function signToken(adminId, purpose, { version = 0 } = {}) {
+  return jwt.sign({ purpose, ver: version }, env.jwtSecret, { subject: adminId, expiresIn: env.jwtExpiresIn, algorithm: ALGORITHM });
 }
 
-/** Returns the admin id the token was issued for, or null if it is invalid, expired, or for another purpose. */
-export function verifyToken(token, purpose) {
+/** Returns `{ adminId, version, claims }`, or null if the token is invalid, expired, or for another purpose. */
+export function readToken(token, purpose) {
   try {
     const payload = jwt.verify(token, env.jwtSecret, { algorithms: [ALGORITHM] });
-    return payload.purpose === purpose && typeof payload.sub === 'string' ? payload.sub : null;
+    if (payload.purpose !== purpose || typeof payload.sub !== 'string') return null;
+    return { adminId: payload.sub, version: Number(payload.ver) || 0, claims: payload };
   } catch {
     return null;
   }
 }
+
+/** Returns the admin id the token was issued for, or null. */
+export const verifyToken = (token, purpose) => readToken(token, purpose)?.adminId ?? null;

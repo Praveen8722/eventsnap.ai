@@ -1,10 +1,12 @@
 export interface Subscriber {
+  id: string;
   name: string;
   plan: string;
   email: string;
   since: string;
   status: 'active' | 'trial' | 'past_due';
-  nextBilling: string;
+  /** Null while there is no billing. */
+  nextBilling: string | null;
   amount: string;
 }
 
@@ -31,6 +33,7 @@ export interface SubscriptionPlan {
 }
 
 export interface SubscriptionsData {
+  billing: { enabled: boolean; message: string };
   plans: SubscriptionPlan[];
   recentSubscribers: Subscriber[];
 }

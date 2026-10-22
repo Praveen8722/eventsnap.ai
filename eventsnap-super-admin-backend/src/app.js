@@ -13,7 +13,12 @@ export function createApp() {
   app.use(cors({ origin: env.corsOrigins }));
   app.use(express.json({ limit: '100kb' }));
   app.use((_req, res, next) => {
-    res.set('Cache-Control', 'no-store');
+    res.set({
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'Referrer-Policy': 'no-referrer',
+    });
     next();
   });
 

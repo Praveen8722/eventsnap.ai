@@ -1,4 +1,4 @@
-export type LogCategory = 'auth' | 'photographers' | 'payments' | 'settings' | 'admin' | 'system';
+export type LogCategory = 'auth' | 'photographers' | 'payments' | 'settings' | 'admin' | 'support' | 'system';
 
 export interface AuditLog {
   id: string;

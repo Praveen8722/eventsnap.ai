@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
-  Activity, Download, LogIn, Settings, ShieldCheck, CreditCard, Camera,
+  Activity, Download, LogIn, Settings, ShieldCheck, CreditCard, Camera, Headphones,
   type LucideIcon,
 } from 'lucide-react';
 import { AsyncBoundary } from '@/components/common/AsyncBoundary';
@@ -11,8 +11,10 @@ import { SearchInput } from '@/components/ui/SearchInput';
 import { TableHead } from '@/components/ui/TableHead';
 import { TablePagination } from '@/components/ui/TablePagination';
 import { useAsync } from '@/hooks/useAsync';
+import { usePagination } from '@/hooks/usePagination';
 import { getActivityLogs } from '@/services/activityLogService';
 import type { LogCategory, AuditLog } from '@/types';
+import { downloadCsv } from '@/utils/csv';
 import { formatDateTime } from '@/utils/format';
 
 const categoryConfig: Record<LogCategory, { color: string; bg: string; icon: LucideIcon }> = {
@@ -21,6 +23,7 @@ const categoryConfig: Record<LogCategory, { color: string; bg: string; icon: Luc
   payments: { color: '#F59E0B', bg: '#FFFBEB', icon: CreditCard },
   settings: { color: '#8B5CF6', bg: '#F5F3FF', icon: Settings },
   admin: { color: '#0EA5E9', bg: '#F0F9FF', icon: ShieldCheck },
+  support: { color: '#EC4899', bg: '#FDF2F8', icon: Headphones },
   system: { color: '#8080A0', bg: '#F5F5FA', icon: Activity },
 };
 
@@ -35,28 +38,44 @@ export default function ActivityLogsPage() {
   return <AsyncBoundary result={result}>{logs => <ActivityLogsView logs={logs} />}</AsyncBoundary>;
 }
 
+function exportLogs(rows: AuditLog[]) {
+  downloadCsv('audit-log', [
+    { header: 'Timestamp', value: l => l.timestamp },
+    { header: 'ID', value: l => l.id },
+    { header: 'Actor', value: l => l.actor },
+    { header: 'Role', value: l => l.actorRole },
+    { header: 'Action', value: l => l.action },
+    { header: 'Category', value: l => l.category },
+    { header: 'Target', value: l => l.target },
+    { header: 'IP address', value: l => l.ipAddress },
+    { header: 'Status', value: l => l.status },
+    { header: 'Details', value: l => l.details },
+  ], rows);
+}
+
 function ActivityLogsView({ logs }: { logs: AuditLog[] }) {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<LogCategory | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'success' | 'failure' | 'warning'>('all');
 
-  const filtered = logs.filter(log => {
-    const matchSearch = log.action.toLowerCase().includes(search.toLowerCase()) ||
-      log.actor.toLowerCase().includes(search.toLowerCase()) ||
-      log.target.toLowerCase().includes(search.toLowerCase()) ||
-      log.details.toLowerCase().includes(search.toLowerCase());
-    const matchCategory = categoryFilter === 'all' || log.category === categoryFilter;
-    const matchStatus = statusFilter === 'all' || log.status === statusFilter;
-    return matchSearch && matchCategory && matchStatus;
-  });
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return logs.filter(log => {
+      const matchSearch = !query || [log.action, log.actor, log.target, log.details, log.ipAddress].some(v => v.toLowerCase().includes(query));
+      const matchCategory = categoryFilter === 'all' || log.category === categoryFilter;
+      const matchStatus = statusFilter === 'all' || log.status === statusFilter;
+      return matchSearch && matchCategory && matchStatus;
+    });
+  }, [logs, search, categoryFilter, statusFilter]);
+  const pagination = usePagination(filtered, `${search}|${categoryFilter}|${statusFilter}`, 50);
 
   return (
     <div className="space-y-5">
       <PageHeader
         title="Activity / Audit Logs"
-        description="Complete audit trail of all platform admin actions"
+        description="Audit trail of admin panel sign-ins and actions"
         actions={
-          <Button>
+          <Button onClick={() => exportLogs(filtered)} disabled={filtered.length === 0}>
             <Download size={15} /> Export Logs
           </Button>
         }
@@ -114,8 +133,13 @@ function ActivityLogsView({ logs }: { logs: AuditLog[] }) {
           <table className="w-full">
             <TableHead columns={['Timestamp', 'Actor', 'Action', 'Category', 'Target', 'IP Address', 'Status', 'Details']} />
             <tbody className="divide-y divide-[#F5F5FA]">
-              {filtered.map(log => {
-                const cc = categoryConfig[log.category];
+              {pagination.pageItems.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-5 py-12 text-center text-[#A0A0C0] text-sm">No log entries match.</td>
+                </tr>
+              )}
+              {pagination.pageItems.map(log => {
+                const cc = categoryConfig[log.category] ?? categoryConfig.system;
                 const sc = statusConfig[log.status];
                 const CatIcon = cc.icon;
                 return (
@@ -159,7 +183,7 @@ function ActivityLogsView({ logs }: { logs: AuditLog[] }) {
             </tbody>
           </table>
         </div>
-        <TablePagination shown={filtered.length} total={logs.length} itemLabel="log entries" pageCount={142} />
+        <TablePagination {...pagination} onPageChange={pagination.setPage} itemLabel="log entries" />
       </div>
     </div>
   );

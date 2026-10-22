@@ -47,10 +47,13 @@ export const setEventCoverFromPhoto = (id, photoId) =>
   api.put(`${BASE}/${encodeURIComponent(id)}/cover/photo`, { photoId });
 
 // onProgress(0–100) reports this request's upload progress.
-export const uploadEventPhotos = (id, files, onProgress) => {
+// Optional: thumbs[i] = small preview Blob for files[i] (or null); compact =
+// the response's event comes without its full photo list.
+export const uploadEventPhotos = (id, files, onProgress, { thumbs, compact } = {}) => {
   const form = new FormData();
   files.forEach((file) => form.append("photos", file));
-  return api.post(`${BASE}/${encodeURIComponent(id)}/photos`, form, {
+  thumbs?.forEach((thumb, i) => thumb && form.append("thumbs", thumb, `thumb-${i}.jpg`));
+  return api.post(`${BASE}/${encodeURIComponent(id)}/photos${compact ? "?compact=1" : ""}`, form, {
     ...multipart,
     onUploadProgress: (e) => e.total && onProgress?.(Math.round((e.loaded / e.total) * 100)),
   });

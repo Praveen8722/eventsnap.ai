@@ -461,9 +461,10 @@ export default function ShareEventView({ shareId }) {
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={createEventAssetUrl(photo.url)}
+                      src={createEventAssetUrl(photo.thumbUrl || photo.url)}
                       alt=""
                       loading="lazy"
+                      decoding="async"
                       draggable={!protect}
                       className="w-full h-auto block transition-transform duration-500 group-hover:scale-[1.03]"
                     />

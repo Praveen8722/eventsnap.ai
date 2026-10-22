@@ -1,14 +1,16 @@
-import { useState } from 'react';
-import { HardDrive, Image, Trash2, Eye, AlertTriangle } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { HardDrive, Image, AlertTriangle } from 'lucide-react';
 import { AsyncBoundary } from '@/components/common/AsyncBoundary';
 import { Badge } from '@/components/ui/Badge';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { TableHead } from '@/components/ui/TableHead';
+import { TablePagination } from '@/components/ui/TablePagination';
 import { useAsync } from '@/hooks/useAsync';
+import { usePagination } from '@/hooks/usePagination';
 import { getGalleryStorageData } from '@/services/galleryService';
 import type { GalleryStorageData } from '@/types';
-import { formatDate } from '@/utils/format';
+import { formatBytes, formatCount, formatDate } from '@/utils/format';
 
 const statusConfig = {
   ok: { label: 'Healthy', color: '#10B981', bg: '#ECFDF5' },
@@ -17,10 +19,9 @@ const statusConfig = {
 };
 
 const planBadge: Record<string, { color: string; bg: string }> = {
-  Studio: { color: '#FF675D', bg: '#FFF1F0' },
-  Professional: { color: '#6C63FF', bg: '#F0EEFF' },
-  Starter: { color: '#6060A0', bg: '#F5F5FA' },
+  Free: { color: '#6C63FF', bg: '#F0EEFF' },
 };
+const defaultPlanBadge = { color: '#6060A0', bg: '#F5F5FA' };
 
 export default function GalleryStoragePage() {
   const result = useAsync(getGalleryStorageData);
@@ -31,28 +32,38 @@ function GalleryStorageView({ storageOverview, galleryUsers }: GalleryStorageDat
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'ok' | 'warning' | 'exceeded'>('all');
 
-  const usedPercent = Math.round(storageOverview.totalUsed / storageOverview.totalAllocated * 100);
+  const { totalUsedBytes, totalAllocatedBytes } = storageOverview;
+  const usedPercent = totalAllocatedBytes ? Math.round((totalUsedBytes / totalAllocatedBytes) * 1000) / 10 : 0;
 
-  const filtered = galleryUsers.filter(u => {
-    const matchSearch = u.name.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === 'all' || u.status === statusFilter;
-    return matchSearch && matchStatus;
-  });
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return galleryUsers.filter(u => {
+      const matchSearch = !query || u.name.toLowerCase().includes(query);
+      const matchStatus = statusFilter === 'all' || u.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+  }, [galleryUsers, search, statusFilter]);
+  const pagination = usePagination(filtered, `${search}|${statusFilter}`);
+  const exceeded = galleryUsers.filter(u => u.status === 'exceeded').length;
 
   return (
     <div className="space-y-5">
       <PageHeader
         title="Gallery & Storage Management"
-        description="Monitor platform storage usage across all photographers"
+        description={`Event gallery storage per photographer · ${storageOverview.quotaGB} GB each on the Free plan`}
       />
 
       {/* Overview cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Allocated', value: `${(storageOverview.totalAllocated / 1024).toFixed(1)} TB`, icon: HardDrive, color: '#6C63FF', bg: '#F0EEFF' },
-          { label: 'Total Used', value: `${(storageOverview.totalUsed / 1024).toFixed(1)} TB`, icon: HardDrive, color: '#F59E0B', bg: '#FFFBEB' },
-          { label: 'Total Files', value: storageOverview.totalFiles.toLocaleString(), icon: Image, color: '#10B981', bg: '#ECFDF5' },
-          { label: 'Avg/Photographer', value: `${storageOverview.avgPerPhotographer} GB`, icon: HardDrive, color: '#8080C0', bg: '#F5F5FA' },
+          { label: 'Total Allocated', value: formatBytes(totalAllocatedBytes), icon: HardDrive, color: '#6C63FF', bg: '#F0EEFF' },
+          { label: 'Total Used', value: formatBytes(totalUsedBytes), icon: HardDrive, color: '#F59E0B', bg: '#FFFBEB' },
+          { label: 'Total Photos', value: formatCount(storageOverview.totalFiles), icon: Image, color: '#10B981', bg: '#ECFDF5' },
+          {
+            label: 'Avg/Photographer',
+            value: formatBytes(storageOverview.photographers ? totalUsedBytes / storageOverview.photographers : 0),
+            icon: HardDrive, color: '#8080C0', bg: '#F5F5FA',
+          },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-2xl p-5 border border-[#F0F0F8] flex items-center gap-4">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: s.bg }}>
@@ -71,7 +82,7 @@ function GalleryStorageView({ storageOverview, galleryUsers }: GalleryStorageDat
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-[#1E1E1E] font-semibold">Platform Storage Utilization</h2>
-            <p className="text-[#8080A0] text-xs mt-0.5">{storageOverview.totalUsed.toLocaleString()} GB used of {storageOverview.totalAllocated.toLocaleString()} GB total</p>
+            <p className="text-[#8080A0] text-xs mt-0.5">{formatBytes(totalUsedBytes)} used of {formatBytes(totalAllocatedBytes)} allocated ({formatCount(storageOverview.photographers)} photographers × {storageOverview.quotaGB} GB)</p>
           </div>
           <div className="text-right">
             <div className="text-2xl font-bold text-[#1E1E1E]">{usedPercent}%</div>
@@ -82,31 +93,25 @@ function GalleryStorageView({ storageOverview, galleryUsers }: GalleryStorageDat
           <div
             className="h-full rounded-full transition-all duration-700"
             style={{
-              width: `${usedPercent}%`,
+              width: `${Math.min(usedPercent, 100)}%`,
               background: 'linear-gradient(90deg, #6C63FF, #FF675D)',
             }}
           />
         </div>
         <div className="flex items-center justify-between mt-2">
           <span className="text-xs text-[#A0A0C0]">0 GB</span>
-          <span className="text-xs text-[#A0A0C0]">{(storageOverview.totalAllocated / 1024).toFixed(0)} TB capacity</span>
+          <span className="text-xs text-[#A0A0C0]">{formatBytes(totalAllocatedBytes)} capacity</span>
         </div>
 
         {/* Storage by plan */}
         <div className="grid grid-cols-3 gap-4 mt-5 pt-5 border-t border-[#F5F5FA]">
-          {[
-            { plan: 'Starter (412×10GB)', used: '1,240 GB', limit: '4,120 GB', color: '#8080C0', pct: 30 },
-            { plan: 'Professional (638×50GB)', used: '4,180 GB', limit: '31,900 GB', color: '#6C63FF', pct: 13 },
-            { plan: 'Studio (153×200GB)', used: '3,001 GB', limit: '30,600 GB', color: '#FF675D', pct: 10 },
-          ].map(s => (
-            <div key={s.plan} className="text-center">
-              <div className="text-[#1E1E1E] text-sm font-bold">{s.used}</div>
-              <div className="text-[#A0A0C0] text-[10px] mb-2">{s.plan}</div>
-              <div className="h-1.5 bg-[#F5F5FA] rounded-full overflow-hidden">
-                <div className="h-full rounded-full" style={{ width: `${s.pct}%`, background: s.color }} />
-              </div>
+          <div className="text-center">
+            <div className="text-[#1E1E1E] text-sm font-bold">{formatBytes(totalUsedBytes)}</div>
+            <div className="text-[#A0A0C0] text-[10px] mb-2">Free ({formatCount(storageOverview.photographers)}×{storageOverview.quotaGB}GB)</div>
+            <div className="h-1.5 bg-[#F5F5FA] rounded-full overflow-hidden">
+              <div className="h-full rounded-full" style={{ width: `${Math.min(usedPercent, 100)}%`, background: '#6C63FF' }} />
             </div>
-          ))}
+          </div>
         </div>
       </div>
 
@@ -124,30 +129,37 @@ function GalleryStorageView({ storageOverview, galleryUsers }: GalleryStorageDat
       </div>
 
       <div className="bg-white rounded-2xl border border-[#F0F0F8] overflow-hidden">
-        {filtered.some(u => u.status === 'exceeded') && (
+        {exceeded > 0 && (
           <div className="px-6 py-3 bg-[#FFF1F0] border-b border-[#FFD8D6] flex items-center gap-2">
             <AlertTriangle size={15} className="text-[#FF675D]" />
-            <span className="text-[#FF675D] text-sm font-medium">{filtered.filter(u => u.status === 'exceeded').length} photographers are over their storage limit</span>
+            <span className="text-[#FF675D] text-sm font-medium">{exceeded} photographer{exceeded === 1 ? ' is' : 's are'} over the storage limit</span>
           </div>
         )}
         <div className="overflow-x-auto">
           <table className="w-full">
-            <TableHead columns={['Photographer', 'Plan', 'Storage Used', 'Galleries', 'Files', 'Last Upload', 'Status', 'Actions']} />
+            <TableHead columns={['Photographer', 'Plan', 'Storage Used', 'Galleries', 'Photos', 'Last Upload', 'Status']} />
             <tbody className="divide-y divide-[#F5F5FA]">
-              {filtered.map(u => {
+              {pagination.pageItems.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-5 py-12 text-center text-[#A0A0C0] text-sm">
+                    {galleryUsers.length === 0 ? 'No photographer has uploaded photos yet.' : 'No photographers match your search.'}
+                  </td>
+                </tr>
+              )}
+              {pagination.pageItems.map(u => {
                 const sc = statusConfig[u.status];
-                const pct = Math.min(Math.round(u.usedGB / u.limitGB * 100), 100);
+                const pct = u.limitBytes ? Math.min(Math.round((u.usedBytes / u.limitBytes) * 100), 100) : 0;
                 return (
                   <tr key={u.id} className={`hover:bg-[#FAFAFA] transition-colors ${u.status === 'exceeded' ? 'bg-[#FFFAFAFA]' : ''}`}>
                     <td className="px-5 py-3.5">
                       <div className="text-[#1E1E1E] text-sm font-semibold">{u.name}</div>
-                      <div className="text-[#A0A0C0] text-xs">{u.id}</div>
+
                     </td>
                     <td className="px-5 py-3.5">
-                      <Badge {...(planBadge[u.plan] ?? planBadge.Starter)}>{u.plan}</Badge>
+                      <Badge {...(planBadge[u.plan] ?? defaultPlanBadge)}>{u.plan}</Badge>
                     </td>
                     <td className="px-5 py-3.5">
-                      <div className="text-[#1E1E1E] text-xs font-bold mb-1.5">{u.usedGB} / {u.limitGB} GB</div>
+                      <div className="text-[#1E1E1E] text-xs font-bold mb-1.5">{formatBytes(u.usedBytes)} / {u.limitGB} GB</div>
                       <div className="w-32 h-1.5 bg-[#F5F5FA] rounded-full overflow-hidden">
                         <div className="h-full rounded-full" style={{
                           width: `${pct}%`,
@@ -161,18 +173,13 @@ function GalleryStorageView({ storageOverview, galleryUsers }: GalleryStorageDat
                     <td className="px-5 py-3.5">
                       <Badge color={sc.color} bg={sc.bg}>{sc.label}</Badge>
                     </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-1">
-                        <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#F0EEFF] text-[#8080A0] hover:text-[#6C63FF] transition-colors"><Eye size={13} /></button>
-                        <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#FFF1F0] text-[#8080A0] hover:text-[#FF675D] transition-colors"><Trash2 size={13} /></button>
-                      </div>
-                    </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
+        <TablePagination {...pagination} onPageChange={pagination.setPage} itemLabel="photographers" />
       </div>
     </div>
   );

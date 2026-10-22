@@ -37,8 +37,13 @@ export const uploadCreateEventPhotos = withJsonErrors(
   multer({
     storage,
     fileFilter,
-    limits: { fileSize: MAX_FILE_SIZE, files: MAX_PHOTOS_PER_UPLOAD },
-  }).array("photos", MAX_PHOTOS_PER_UPLOAD)
+    limits: { fileSize: MAX_FILE_SIZE, files: MAX_PHOTOS_PER_UPLOAD * 2 },
+    // Optional "thumbs": one small preview per photo, named "thumb-<index of
+    // its photo in this request>.jpg" (see controllers/createEventController.js).
+  }).fields([
+    { name: "photos", maxCount: MAX_PHOTOS_PER_UPLOAD },
+    { name: "thumbs", maxCount: MAX_PHOTOS_PER_UPLOAD },
+  ])
 );
 
 // Single cover photo (field "cover") — on create and on change cover. A JSON

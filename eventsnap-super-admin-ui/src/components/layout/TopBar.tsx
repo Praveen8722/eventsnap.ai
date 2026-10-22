@@ -1,11 +1,18 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
-import { Bell, ChevronDown, Globe, LogOut, Search, Settings, User } from 'lucide-react';
-import { ROUTES } from '@/config/routes';
+import { Bell, ChevronDown, Globe, LogOut, Search, ShieldCheck } from 'lucide-react';
+import { ROUTES, type AdminRoute } from '@/config/routes';
 import { useAuth } from '@/hooks/useAuth';
 import { getRecentAlerts, markAllNotificationsRead } from '@/services/notificationService';
-import type { NotificationAlert, NotificationType } from '@/types';
+import { getSystemStatus, type SystemStatus } from '@/services/systemService';
+import type { AccessArea, NotificationAlert, NotificationType } from '@/types';
 import { initials } from '@/utils/format';
+
+const SEARCH_TARGETS: { label: string; path: AdminRoute; area: AccessArea }[] = [
+  { label: 'Photographers', path: ROUTES.photographers, area: 'photographers' },
+  { label: 'Clients', path: ROUTES.clients, area: 'clients' },
+  { label: 'Bookings', path: ROUTES.bookings, area: 'bookings' },
+];
 
 const dotColor: Record<NotificationType, string> = {
   warning: '#F59E0B',
@@ -20,7 +27,9 @@ interface TopBarProps {
 
 export function TopBar({ title }: TopBarProps) {
   const navigate = useNavigate();
-  const { logout, user } = useAuth();
+  const { logout, user, can } = useAuth();
+  const [systemStatus, setSystemStatus] = useState<SystemStatus | 'error' | null>(null);
+  const searchTargets = SEARCH_TARGETS.filter(target => can(target.area));
   const [recentAlerts, setRecentAlerts] = useState<NotificationAlert[]>([]);
   const hasUnread = recentAlerts.some(alert => !alert.read);
   const [showProfile, setShowProfile] = useState(false);
@@ -32,7 +41,40 @@ export function TopBar({ title }: TopBarProps) {
     getRecentAlerts().then(setRecentAlerts, () => {});
   }, []);
 
-  useEffect(reloadAlerts, [reloadAlerts]);
+  useEffect(() => {
+    if (can('notifications')) reloadAlerts();
+  }, [reloadAlerts, can]);
+
+  useEffect(() => {
+    let active = true;
+    getSystemStatus().then(
+      status => active && setSystemStatus(status),
+      () => active && setSystemStatus('error'),
+    );
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const search = (path: AdminRoute) => {
+    const query = searchQuery.trim();
+    navigate(query ? `${path}?q=${encodeURIComponent(query)}` : path);
+    setSearchQuery('');
+  };
+
+  const submitSearch = (e: FormEvent) => {
+    e.preventDefault();
+    if (searchTargets[0]) search(searchTargets[0].path);
+  };
+
+  const status =
+    systemStatus === null
+      ? null
+      : systemStatus === 'error'
+        ? { label: 'API Unreachable', color: '#FF675D' }
+        : systemStatus.platformDatabase === 'connected'
+          ? { label: 'All Systems Operational', color: '#10B981' }
+          : { label: 'Platform DB Not Connected', color: '#F59E0B' };
 
   const markAllRead = () => {
     markAllNotificationsRead().then(reloadAlerts, reloadAlerts);
@@ -49,9 +91,8 @@ export function TopBar({ title }: TopBarProps) {
   };
 
   const profileMenu = [
-    { icon: User, label: 'Profile Settings' },
-    { icon: Settings, label: 'Preferences' },
-    { icon: Globe, label: 'Platform Settings', action: () => goTo(ROUTES.settings) },
+    ...(can('settings') ? [{ icon: Globe, label: 'Platform Settings', action: () => goTo(ROUTES.settings) }] : []),
+    ...(can('adminUsers') ? [{ icon: ShieldCheck, label: 'Admin Users & Roles', action: () => goTo(ROUTES.adminUsers) }] : []),
   ];
 
   return (
@@ -71,27 +112,46 @@ export function TopBar({ title }: TopBarProps) {
       </div>
 
       {/* Search */}
-      <div className="flex items-center gap-3 flex-1 max-w-md mx-6">
-        <div className="relative flex-1">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0A0C0]" />
-          <input
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search photographers, clients, bookings..."
-            className="w-full pl-9 pr-4 py-2 text-sm bg-[#F5F6FA] border border-[#E8E8F0] rounded-xl text-[#1E1E1E] placeholder:text-[#A0A0C0] focus:outline-none focus:ring-2 focus:ring-[#6C63FF]/30 focus:border-[#6C63FF]"
-          />
-        </div>
-      </div>
+      {searchTargets.length > 0 && (
+        <form onSubmit={submitSearch} className="flex items-center gap-3 flex-1 max-w-md mx-6" role="search">
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0A0C0]" />
+            <input
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              aria-label="Search"
+              placeholder={`Search ${searchTargets.map(t => t.label.toLowerCase()).join(', ')}...`}
+              className="w-full pl-9 pr-4 py-2 text-sm bg-[#F5F6FA] border border-[#E8E8F0] rounded-xl text-[#1E1E1E] placeholder:text-[#A0A0C0] focus:outline-none focus:ring-2 focus:ring-[#6C63FF]/30 focus:border-[#6C63FF]"
+            />
+            {searchQuery.trim() && (
+              <div className="absolute left-0 right-0 top-11 bg-white rounded-xl shadow-xl border border-[#E8E8F0] py-1 z-50">
+                {searchTargets.map(target => (
+                  <button
+                    key={target.path}
+                    type="button"
+                    onClick={() => search(target.path)}
+                    className="w-full text-left px-4 py-2 text-sm text-[#4A4A6A] hover:bg-[#F5F6FA]"
+                  >
+                    Search <span className="font-semibold">{target.label.toLowerCase()}</span> for “{searchQuery.trim()}”
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </form>
+      )}
 
       <div className="flex items-center gap-2">
         {/* Platform status */}
-        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#10B981]/10 rounded-full">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-          <span className="text-[#10B981] text-[11px] font-semibold">All Systems Operational</span>
-        </div>
+        {status && (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full" style={{ background: `${status.color}1A` }}>
+            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: status.color }} />
+            <span className="text-[11px] font-semibold" style={{ color: status.color }}>{status.label}</span>
+          </div>
+        )}
 
         {/* Notifications */}
-        <div className="relative">
+        {can('notifications') && <div className="relative">
           <button
             onClick={() => {
               if (!showNotifications) reloadAlerts();
@@ -139,7 +199,7 @@ export function TopBar({ title }: TopBarProps) {
               </div>
             </div>
           )}
-        </div>
+        </div>}
 
         {/* Profile */}
         <div className="relative">
@@ -163,7 +223,7 @@ export function TopBar({ title }: TopBarProps) {
                 <p className="text-[#1E1E1E] text-sm font-semibold">{user?.name}</p>
                 <p className="text-[#A0A0C0] text-xs truncate">{user?.email}</p>
               </div>
-              <div className="py-1">
+              {profileMenu.length > 0 && <div className="py-1">
                 {profileMenu.map(({ icon: Icon, label, action }) => (
                   <button
                     key={label}
@@ -174,7 +234,7 @@ export function TopBar({ title }: TopBarProps) {
                     {label}
                   </button>
                 ))}
-              </div>
+              </div>}
               <div className="border-t border-[#F0F0F8] py-1">
                 <button
                   onClick={logout}

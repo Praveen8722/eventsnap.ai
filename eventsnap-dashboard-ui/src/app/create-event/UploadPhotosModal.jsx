@@ -13,6 +13,7 @@ import {
 import { uploadEventPhotos } from "@/api/createEventApi";
 import { ModalShell, primaryBtn, secondaryBtn } from "./ModalShell";
 import { apiError } from "./mockData";
+import { createLimiter, makeThumbnail } from "./thumbnail";
 
 // Matches the backend's per-file limit (middleware/uploadCreateEvent.js).
 const MAX_SIZE_MB = 25;
@@ -25,6 +26,11 @@ const MAX_SIZE = MAX_SIZE_MB * 1024 * 1024;
 const BATCH_MAX_FILES = 10;
 const BATCH_MAX_BYTES = 40 * 1024 * 1024;
 const PARALLEL_BATCHES = 2;
+// Thumbnails: made two at a time; a batch waits at most this long for its
+// own before going up without them (the original is what matters).
+const THUMB_WAIT_MS = 3000;
+// Progress bars update at most this often (each update re-renders the list).
+const PROGRESS_EVERY_MS = 150;
 
 const formatSize = (bytes) =>
   bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -86,12 +92,14 @@ const filesFromDrop = (dataTransfer) => {
 let nextId = 0;
 
 // Bulk photo upload: pick files or a whole folder, or drag & drop either.
-// Photos go up in batches; after each successful batch onSaved(event)
-// receives the updated event from the server. A failed batch is retried
+// Previews are small thumbnails made in the browser (also uploaded, for fast
+// gallery tiles). Photos go up in batches; after each successful batch
+// onPhotosAdded(photos, event) receives just the new photos (or, without
+// that prop, onSaved(event) the updated event). A failed batch is retried
 // photo-by-photo (so one bad file doesn't sink the others) and anything that
 // still fails stays here for "Retry failed" — photos already saved are never
 // sent again. onDone(count) runs when everything has been uploaded.
-export function UploadPhotosModal({ event, onClose, onSaved, onDone }) {
+export function UploadPhotosModal({ event, onClose, onSaved, onPhotosAdded, onDone }) {
   // item.status: "pending" | "uploading" | "done" | "failed"
   const [items, setItems] = useState([]);
   const [dragging, setDragging] = useState(false);
@@ -106,11 +114,16 @@ export function UploadPhotosModal({ event, onClose, onSaved, onDone }) {
   const doneTimer = useRef(null);
   // Local preview URLs, revoked when the modal closes.
   const ownedUrls = useRef(new Set());
+  // item id → Promise<thumbnail Blob | null>
+  const thumbJobs = useRef(new Map());
+  const [thumbLimit] = useState(() => createLimiter(2));
 
   useEffect(() => {
     const owned = ownedUrls.current;
+    const jobs = thumbJobs.current;
     return () => {
       clearTimeout(doneTimer.current);
+      jobs.clear(); // thumbnails finishing later make no preview URL
       owned.forEach((url) => URL.revokeObjectURL(url));
       owned.clear();
     };
@@ -127,15 +140,13 @@ export function UploadPhotosModal({ event, onClose, onSaved, onDone }) {
       else if (seen.has(fileKey(file))) counts.duplicate++;
       else {
         seen.add(fileKey(file));
-        const url = URL.createObjectURL(file);
-        ownedUrls.current.add(url);
         next.push({
           id: `upload-${nextId++}`,
           key: fileKey(file),
           file,
           name: file.webkitRelativePath || file.name,
           size: file.size,
-          url,
+          url: "", // preview: set once its thumbnail is ready
           progress: 0,
           status: "pending",
           error: "",
@@ -145,9 +156,23 @@ export function UploadPhotosModal({ event, onClose, onSaved, onDone }) {
     setSkipped(counts.notImage || counts.tooLarge || counts.duplicate ? counts : null);
     setFatalError("");
     setItems((prev) => [...prev, ...next]);
+    // Thumbnails in the background: the preview shows the small one (not the
+    // full photo); if the browser can't make one, the original as before.
+    for (const item of next) {
+      const job = thumbLimit(() => makeThumbnail(item.file));
+      thumbJobs.current.set(item.id, job);
+      job.then((thumb) => {
+        if (!thumbJobs.current.has(item.id)) return; // removed meanwhile
+        const url = URL.createObjectURL(thumb || item.file);
+        ownedUrls.current.add(url);
+        setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, url } : i)));
+      });
+    }
   };
 
   const release = (item) => {
+    thumbJobs.current.delete(item.id);
+    if (!item.url) return;
     URL.revokeObjectURL(item.url);
     ownedUrls.current.delete(item.url);
   };
@@ -184,19 +209,37 @@ export function UploadPhotosModal({ event, onClose, onSaved, onDone }) {
     onSaved(serverEvent);
   };
 
+  // The batch's thumbnails (null where none could be made or it took too long).
+  const thumbsFor = (batch) =>
+    Promise.all(
+      batch.map((i) =>
+        Promise.race([thumbJobs.current.get(i.id) || null, new Promise((r) => setTimeout(() => r(null), THUMB_WAIT_MS))])
+      )
+    );
+
   // Sends one request; returns null on success or the axios error.
   const send = async (batch) => {
     const ids = new Set(batch.map((i) => i.id));
     patch(ids, { status: "uploading", progress: 0, error: "" });
     try {
+      const thumbs = await thumbsFor(batch);
+      let shownAt = 0;
       const res = await uploadEventPhotos(
         event.id,
         batch.map((i) => i.file),
-        // Held at 99% until the server confirms the photos are saved.
-        (percent) => patch(ids, { progress: Math.min(percent, 99) })
+        // Held at 99% until the server confirms the photos are saved;
+        // throttled so a big batch doesn't re-render the list constantly.
+        (percent) => {
+          const now = Date.now();
+          if (now - shownAt < PROGRESS_EVERY_MS && percent < 100) return;
+          shownAt = now;
+          patch(ids, { progress: Math.min(percent, 99) });
+        },
+        { thumbs, compact: !!onPhotosAdded }
       );
       patch(ids, { status: "done", progress: 100 });
-      saved(res.data.event);
+      if (onPhotosAdded) onPhotosAdded(res.data.photos || [], res.data.event);
+      else saved(res.data.event);
       return null;
     } catch (err) {
       return err;
@@ -468,8 +511,12 @@ export function UploadPhotosModal({ event, onClose, onSaved, onDone }) {
                   }`}
                 >
                   <div className="relative aspect-[4/3] bg-gray-100">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={item.url} alt={item.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                    {item.url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={item.url} alt={item.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gray-100 animate-pulse" aria-hidden="true" />
+                    )}
                     {item.status === "uploading" && <div className="absolute inset-0 bg-black/25" />}
                     {complete && (
                       <div className="absolute inset-0 bg-black/20 flex items-center justify-center">

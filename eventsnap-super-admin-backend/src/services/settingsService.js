@@ -5,9 +5,13 @@ import { recordAudit } from './auditService.js';
 
 const MAX_UPLOAD_MB = 2048;
 
+// Toggles that no longer exist but may still be stored in older settings documents.
+const RETIRED_TOGGLES = new Set(['2fa']);
+
 function toSettingsData(doc) {
   const toggleSettings = {};
   for (const { group, label, description, value, key } of doc.toggles) {
+    if (RETIRED_TOGGLES.has(key)) continue;
     (toggleSettings[group] ??= []).push({ label, description, value, key });
   }
   return { generalSettings: { ...doc.general }, toggleSettings };
@@ -79,7 +83,7 @@ export async function updatePlatformSettings(body, actor, ip) {
   }
 
   for (const [key, value] of Object.entries(toggles)) {
-    const toggle = doc.toggles.find(t => t.key === key);
+    const toggle = RETIRED_TOGGLES.has(key) ? null : doc.toggles.find(t => t.key === key);
     if (!toggle) throw HttpError.badRequest(`Unknown toggle setting: ${key}.`);
     if (typeof value !== 'boolean') throw HttpError.badRequest(`Toggle ${key} must be true or false.`);
     if (toggle.value !== value) {

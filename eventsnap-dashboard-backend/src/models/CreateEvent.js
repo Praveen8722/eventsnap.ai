@@ -19,6 +19,11 @@ const photoSchema = new mongoose.Schema(
     url: { type: String, required: true },
     originalName: { type: String, default: "" },
     size: { type: Number, default: 0 },
+    // Small preview (about 640 px JPEG made in the photographer's browser at
+    // upload) for gallery tiles; the original above stays untouched. Empty
+    // for photos uploaded without one — galleries then show the original.
+    thumbUrl: { type: String, default: "" },
+    thumbSize: { type: Number, default: 0 },
     // Guest selfie search (Guest Access → Face Search): one face signature
     // per face found in the photo — a 128-value descriptor quantised to 128
     // signed bytes, computed in the photographer's browser. faceIndexed stays

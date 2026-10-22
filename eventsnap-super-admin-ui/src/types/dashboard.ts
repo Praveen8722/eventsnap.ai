@@ -1,6 +1,8 @@
 export interface RevenuePoint {
   month: string;
+  /** Booking volume (INR) recorded that month. */
   revenue: number;
+  /** Bookings created that month. */
   bookings: number;
 }
 
@@ -11,6 +13,7 @@ export interface PlanDistribution {
 }
 
 export interface TopPhotographer {
+  id: string;
   name: string;
   location: string;
   bookings: number;
@@ -28,7 +31,17 @@ export interface ActivityEvent {
   status: ActivityStatus;
 }
 
+export interface DashboardStats {
+  photographers: { total: number; newThisMonth: number };
+  activePhotographers: { value: number; total: number; windowDays: number };
+  bookings: { total: number; newThisMonth: number };
+  bookingVolume: { thisMonth: number; lastMonth: number; changePercent: number | null; total: number };
+  events: { total: number; newThisMonth: number };
+  outstanding: { amount: number; bookings: number };
+}
+
 export interface DashboardData {
+  stats: DashboardStats;
   revenueData: RevenuePoint[];
   subscriptionData: PlanDistribution[];
   topPhotographers: TopPhotographer[];

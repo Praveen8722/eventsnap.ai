@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-export const LOG_CATEGORIES = ['auth', 'photographers', 'payments', 'settings', 'admin', 'system'];
+export const LOG_CATEGORIES = ['auth', 'photographers', 'payments', 'settings', 'admin', 'support', 'system'];
 
 const auditLogSchema = new mongoose.Schema(
   {

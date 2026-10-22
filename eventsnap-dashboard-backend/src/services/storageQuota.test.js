@@ -158,6 +158,19 @@ describe("storage quota", { skip: false }, () => {
     assert.equal((await quota.getStorageUsage(other)).usedBytes, 100 * MB);
   });
 
+  test("thumbnails count as stored files: each once, with their recorded size", async (t) => {
+    if (!connected) return t.skip("no MongoDB");
+    const user = newUser();
+    const g = gridUrl();
+    const th = gridUrl();
+    await addGridFile(g, 6 * MB, user);
+    await addGridFile(th, 40 * 1024, user);
+    await mkEvent(user, [{ url: g, originalName: "a", size: 6 * MB, thumbUrl: th, thumbSize: 40 * 1024 }], g);
+    assert.equal((await quota.getStorageUsage(user)).usedBytes, 6 * MB + 40 * 1024);
+    await StorageUsage.updateOne({ user }, { $set: { used: 0 } });
+    assert.equal((await quota.reconcileStorageUsage(user)).after, 6 * MB + 40 * 1024);
+  });
+
   test("reconcile: fixes drift; never while an upload holds space; version guard stops a stale count", async (t) => {
     if (!connected) return t.skip("no MongoDB");
     const user = newUser();

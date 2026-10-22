@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  Globe, Mail, Shield, CreditCard, Server, Zap, Save, ChevronRight, Eye, EyeOff, AlertTriangle,
+  Globe, Mail, Shield, CreditCard, Server, Zap, Save, ChevronRight, AlertTriangle,
 } from 'lucide-react';
 import { AsyncBoundary } from '@/components/common/AsyncBoundary';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { useAsync } from '@/hooks/useAsync';
+import { useAuth } from '@/hooks/useAuth';
 import { getPlatformSettings, updatePlatformSettings } from '@/services/settingsService';
+import { getSystemStatus, type SystemStatus } from '@/services/systemService';
 import type { PlatformSettingsData, ToggleSetting } from '@/types';
 
 const settingsGroups = [
@@ -28,7 +30,9 @@ const toggleValues = (toggleSettings: Record<string, ToggleSetting[]>) =>
 function SettingsView({ generalSettings, toggleSettings }: PlatformSettingsData) {
   const [activeGroup, setActiveGroup] = useState('general');
   const [toggles, setToggles] = useState<Record<string, boolean>>(() => toggleValues(toggleSettings));
-  const [showApiKey, setShowApiKey] = useState(false);
+  const { can } = useAuth();
+  const canEdit = can('settingsEdit');
+  const [systemStatus, setSystemStatus] = useState<SystemStatus | null | 'error'>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -36,6 +40,18 @@ function SettingsView({ generalSettings, toggleSettings }: PlatformSettingsData)
   const savedTimer = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => () => clearTimeout(savedTimer.current), []);
+
+  useEffect(() => {
+    if (activeGroup !== 'infrastructure') return;
+    let active = true;
+    getSystemStatus().then(
+      status => active && setSystemStatus(status),
+      () => active && setSystemStatus('error'),
+    );
+    return () => {
+      active = false;
+    };
+  }, [activeGroup]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -60,9 +76,9 @@ function SettingsView({ generalSettings, toggleSettings }: PlatformSettingsData)
     <div className="space-y-5">
       <PageHeader
         title="Platform Settings"
-        description="Configure global platform behavior and integrations"
+        description={canEdit ? 'Configure global platform behavior and integrations' : 'View-only: only Super Admins can change settings'}
         actions={
-          <button
+          canEdit && <button
             onClick={handleSave}
             disabled={saving}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-md disabled:opacity-60 ${
@@ -116,11 +132,12 @@ function SettingsView({ generalSettings, toggleSettings }: PlatformSettingsData)
                   { label: 'Support Email', key: 'supportEmail', placeholder: 'support@eventsnap.ai' },
                   { label: 'Admin Email', key: 'adminEmail', placeholder: 'admin@eventsnap.ai' },
                   { label: 'Max File Size (MB)', key: 'maxFileSize', placeholder: '100' },
-                  { label: 'Default Timezone', key: 'defaultTimezone', placeholder: 'America/New_York' },
+                  { label: 'Default Timezone', key: 'defaultTimezone', placeholder: 'Asia/Kolkata' },
                 ].map(field => (
                   <div key={field.key}>
                     <label className="block text-[#4A4A6A] text-xs font-semibold uppercase tracking-wider mb-1.5">{field.label}</label>
                     <input
+                      readOnly={!canEdit}
                       value={formValues[field.key as keyof typeof formValues]}
                       onChange={e => setFormValues(prev => ({ ...prev, [field.key]: e.target.value }))}
                       placeholder={field.placeholder}
@@ -135,28 +152,10 @@ function SettingsView({ generalSettings, toggleSettings }: PlatformSettingsData)
           {/* Integration-specific settings */}
           {activeGroup === 'integrations' && (
             <div className="bg-white rounded-2xl border border-[#F0F0F8] p-6">
-              <h2 className="text-[#1E1E1E] font-semibold mb-5">API Keys & Credentials</h2>
-              <div className="space-y-4">
-                {[
-                  { label: 'Stripe Secret Key', value: 'sk_live_51KN3p•••••••••••••••••••••••••••••' },
-                  { label: 'SendGrid API Key', value: 'SG.abc123•••••••••••••••••••••••••••••••' },
-                  { label: 'Cloudflare API Token', value: 'v1.0-•••••••••••••••••••••••••••••••••••' },
-                ].map(k => (
-                  <div key={k.label}>
-                    <label className="block text-[#4A4A6A] text-xs font-semibold uppercase tracking-wider mb-1.5">{k.label}</label>
-                    <div className="relative">
-                      <input
-                        type={showApiKey ? 'text' : 'password'}
-                        defaultValue={k.value}
-                        className="w-full px-4 py-2.5 pr-10 bg-[#F9F9FC] border border-[#E8E8F0] rounded-xl text-sm text-[#1E1E1E] focus:outline-none focus:ring-2 focus:ring-[#6C63FF]/30 font-mono"
-                      />
-                      <button onClick={() => setShowApiKey(s => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8080A0] hover:text-[#4A4A6A]">
-                        {showApiKey ? <EyeOff size={15} /> : <Eye size={15} />}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <h2 className="text-[#1E1E1E] font-semibold mb-2">API Keys & Credentials</h2>
+              <p className="text-[#8080A0] text-sm">
+                Credentials (storage, email, payments) are set as environment variables on the servers that use them. They are never stored in or shown by the admin panel.
+              </p>
             </div>
           )}
 
@@ -172,8 +171,13 @@ function SettingsView({ generalSettings, toggleSettings }: PlatformSettingsData)
                       <div className="text-[#8080A0] text-xs mt-0.5">{setting.description}</div>
                     </div>
                     <button
+                      type="button"
+                      role="switch"
+                      aria-checked={toggles[setting.key]}
+                      aria-label={setting.label}
+                      disabled={!canEdit}
                       onClick={() => setToggles(prev => ({ ...prev, [setting.key]: !prev[setting.key] }))}
-                      className="relative flex-shrink-0"
+                      className="relative flex-shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       <div className={`w-11 h-6 rounded-full transition-colors ${toggles[setting.key] ? 'bg-[#6C63FF]' : 'bg-[#D0D0E0]'}`}>
                         <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${toggles[setting.key] ? 'translate-x-5' : 'translate-x-0'}`} />
@@ -190,24 +194,26 @@ function SettingsView({ generalSettings, toggleSettings }: PlatformSettingsData)
             <div className="bg-white rounded-2xl border border-[#F0F0F8] p-6">
               <h2 className="text-[#1E1E1E] font-semibold mb-5">System Status</h2>
               <div className="space-y-3">
-                {[
-                  { service: 'API Server', status: 'Operational', uptime: '99.97%', latency: '42ms' },
-                  { service: 'Database (PostgreSQL)', status: 'Operational', uptime: '99.99%', latency: '8ms' },
-                  { service: 'File Storage (S3)', status: 'Operational', uptime: '99.98%', latency: '124ms' },
-                  { service: 'CDN (Cloudflare)', status: 'Operational', uptime: '100%', latency: '18ms' },
-                  { service: 'Email (SendGrid)', status: 'Operational', uptime: '99.95%', latency: '320ms' },
-                  { service: 'Payment Processing', status: 'Operational', uptime: '99.99%', latency: '211ms' },
-                ].map(s => (
+                {(systemStatus === null
+                  ? [{ service: 'Checking…', ok: true, detail: '' }]
+                  : systemStatus === 'error'
+                    ? [{ service: 'Admin API', ok: false, detail: 'Unreachable' }]
+                    : [
+                        { service: 'Admin API', ok: true, detail: 'Operational' },
+                        { service: 'Admin database', ok: true, detail: 'Connected' },
+                        {
+                          service: 'EventSnap platform database (read-only)',
+                          ok: systemStatus.platformDatabase === 'connected',
+                          detail: systemStatus.platformDatabase === 'connected' ? 'Connected' : 'Not configured (PLATFORM_MONGO_URL)',
+                        },
+                      ]
+                ).map(s => (
                   <div key={s.service} className="flex items-center justify-between px-4 py-3 bg-[#F9F9FC] rounded-xl">
                     <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 rounded-full bg-[#10B981]" />
+                      <div className={`w-2 h-2 rounded-full ${s.ok ? 'bg-[#10B981]' : 'bg-[#FF675D]'}`} />
                       <span className="text-[#1E1E1E] text-sm font-medium">{s.service}</span>
                     </div>
-                    <div className="flex items-center gap-6 text-xs text-[#8080A0]">
-                      <span className="text-[#10B981] font-semibold">{s.status}</span>
-                      <span>Uptime: <strong className="text-[#4A4A6A]">{s.uptime}</strong></span>
-                      <span>Latency: <strong className="text-[#4A4A6A]">{s.latency}</strong></span>
-                    </div>
+                    <span className={`text-xs font-semibold ${s.ok ? 'text-[#10B981]' : 'text-[#FF675D]'}`}>{s.detail}</span>
                   </div>
                 ))}
               </div>

@@ -4,6 +4,8 @@ export interface GalleryUser {
   plan: string;
   usedGB: number;
   limitGB: number;
+  usedBytes: number;
+  limitBytes: number;
   galleries: number;
   files: number;
   lastUpload: string;
@@ -18,6 +20,11 @@ export interface StorageOverview {
   totalFiles: number;
   /** Gigabytes */
   avgPerPhotographer: number;
+  totalAllocatedBytes: number;
+  totalUsedBytes: number;
+  /** Per-photographer quota (GB). */
+  quotaGB: number;
+  photographers: number;
 }
 
 export interface GalleryStorageData {

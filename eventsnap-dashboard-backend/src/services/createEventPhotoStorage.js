@@ -46,7 +46,7 @@ const s3UsageBytes = async () => {
       .aggregate([
         { $unwind: "$photos" },
         { $match: { "photos.url": { $regex: `^${s3.S3_URL_PREFIX.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}` } } },
-        { $group: { _id: null, bytes: { $sum: "$photos.size" } } },
+        { $group: { _id: null, bytes: { $sum: { $add: [{ $ifNull: ["$photos.size", 0] }, { $ifNull: ["$photos.thumbSize", 0] }] } } } },
       ])
       .toArray();
     usage.bytes = row?.bytes || 0;
@@ -142,20 +142,24 @@ export const createEventPhotoMulterStorage = () => {
   };
 };
 
-const requestFiles = (req) => [].concat(req.files || [], req.file || []).filter(Boolean);
+// req.files is an array (.array) or { field: [files] } (.fields).
+const requestFiles = (req) =>
+  []
+    .concat(...(Array.isArray(req.files) ? [req.files] : Object.values(req.files || {})), req.file || [])
+    .filter(Boolean);
 
 // The request's uploaded files are now saved to an event: their bytes count
 // as used storage. Never throws (the photos are saved either way; a missed
 // count is fixed by reconcileStorageUsage).
-export const commitUploads = (req) =>
+export const commitUploads = (req, files = requestFiles(req)) =>
   quota
-    .commit(req.userId, requestFiles(req).filter((f) => f.quotaHold).map((f) => ({ id: f.quotaHold, bytes: f.size || 0 })))
+    .commit(req.userId, files.filter((f) => f.quotaHold).map((f) => ({ id: f.quotaHold, bytes: f.size || 0 })))
     .catch((error) => console.error("Storage quota commit failed:", error?.name || "error"));
 
 // The request failed after its files were stored: deletes them and releases
 // their quota holds.
-export const discardUploads = async (req) => {
-  const files = requestFiles(req);
+// files: only these (default: all of the request's files).
+export const discardUploads = async (req, files = requestFiles(req)) => {
   await quota.release(req.userId, files.map((f) => f.quotaHold).filter(Boolean)).catch(() => {});
   await discardPhotos(files.map((f) => f.url));
 };
@@ -193,9 +197,10 @@ const removeStoredPhoto = async (url, options = {}) => {
   return deleted;
 };
 
-// Every stored photo URL an event references (cover + gallery photos).
+// Every stored file URL an event references (cover, gallery photos and their
+// thumbnails).
 const referencedUrls = (event) =>
-  new Set([event?.coverPhoto, ...(event?.photos || []).map((p) => p.url)].filter(Boolean));
+  new Set([event?.coverPhoto, ...(event?.photos || []).flatMap((p) => [p.url, p.thumbUrl])].filter(Boolean));
 
 const FIRST_RETRY_MS = 5 * 60 * 1000;
 
@@ -257,7 +262,7 @@ const CLAIM_TTL_MS = 10 * 60 * 1000;
 // a stale claim, which is dropped WITHOUT freeing again (at worst the bytes
 // stay counted until the next recount) — never freed twice.
 const settleDeletion = async (userId, url, { checkReferences = false } = {}) => {
-  if (checkReferences && (await CreateEvent.exists({ user: userId, $or: [{ "photos.url": url }, { coverPhoto: url }] }))) {
+  if (checkReferences && (await CreateEvent.exists({ user: userId, $or: [{ "photos.url": url }, { "photos.thumbUrl": url }, { coverPhoto: url }] }))) {
     await PendingPhotoDeletion.deleteOne({ user: userId, url, claimedAt: null });
     return "kept";
   }

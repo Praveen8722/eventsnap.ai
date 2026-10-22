@@ -1,11 +1,11 @@
-// Generated from eventsnap-super-admin-ui/src/mocks/settings.ts. Raw seed data in the UI's payload shape.
+// Initial platform settings (admin panel configuration; stored preferences).
 export const generalSettings = {
   platformName: 'EventSnap.ai',
   platformUrl: 'https://eventsnap.ai',
   supportEmail: 'support@eventsnap.ai',
   adminEmail: 'admin@eventsnap.ai',
   maxFileSize: '100',
-  defaultTimezone: 'America/New_York',
+  defaultTimezone: 'Asia/Kolkata',
 };
 
 export const toggleSettings = {
@@ -21,7 +21,6 @@ export const toggleSettings = {
     { label: 'Admin Alerts', description: 'Receive admin alerts for critical platform events', value: true, key: 'adminAlerts' },
   ],
   security: [
-    { label: 'Two-Factor Authentication (Admins)', description: 'Require 2FA for all admin accounts', value: true, key: '2fa' },
     { label: 'Session Timeout', description: 'Auto-logout admin sessions after 8 hours of inactivity', value: true, key: 'sessionTimeout' },
     { label: 'Rate Limiting', description: 'Enable API rate limiting to prevent abuse', value: true, key: 'rateLimit' },
     { label: 'IP Whitelist', description: 'Restrict admin access to approved IP addresses only', value: false, key: 'ipWhitelist' },

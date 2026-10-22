@@ -64,14 +64,18 @@ export const storedSizes = async (urls) => {
 // Recomputed from what's stored: every distinct file the user's events
 // reference + files still waiting to be deleted.
 export const calculateUsage = async (userId) => {
-  const events = await CreateEvent.find({ user: userId }).select("coverPhoto photos.url photos.size").lean();
+  const events = await CreateEvent.find({ user: userId }).select("coverPhoto photos.url photos.size photos.thumbUrl photos.thumbSize").lean();
   const known = new Map();
   const unknown = new Set();
+  const count = (url, size) => {
+    if (!url) return;
+    if (size > 0) known.set(url, Math.max(known.get(url) || 0, size));
+    else unknown.add(url);
+  };
   for (const ev of events) {
     for (const p of ev.photos || []) {
-      if (!p.url) continue;
-      if (p.size > 0) known.set(p.url, Math.max(known.get(p.url) || 0, p.size));
-      else unknown.add(p.url);
+      count(p.url, p.size);
+      count(p.thumbUrl, p.thumbSize); // thumbnails are stored files too
     }
     if (ev.coverPhoto) unknown.add(ev.coverPhoto);
   }
